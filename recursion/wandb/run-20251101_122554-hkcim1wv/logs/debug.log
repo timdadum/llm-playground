@@ -1,0 +1,5 @@
+2025-11-01 12:25:54,056 INFO    MainThread:26392 [wandb_init.py:setup_run_log_directory():705] Logging user logs to c:\Users\timda\Documents\Repositories\llm-playground\recursion\wandb\run-20251101_122554-hkcim1wv\logs\debug.log
+2025-11-01 12:25:54,056 INFO    MainThread:26392 [wandb_init.py:setup_run_log_directory():706] Logging internal logs to c:\Users\timda\Documents\Repositories\llm-playground\recursion\wandb\run-20251101_122554-hkcim1wv\logs\debug-internal.log
+2025-11-01 12:25:54,056 INFO    MainThread:26392 [wandb_init.py:init():832] calling init triggers
+2025-11-01 12:25:54,056 INFO    MainThread:26392 [wandb_init.py:init():837] wandb.init called with sweep_config: {}
+config: {'_wandb': {}}

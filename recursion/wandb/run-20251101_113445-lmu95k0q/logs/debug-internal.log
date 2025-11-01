@@ -1,0 +1,7 @@
+{"time":"2025-11-01T11:34:48.9181735+01:00","level":"INFO","msg":"stream: starting","core version":"0.22.2"}
+{"time":"2025-11-01T11:34:49.8004853+01:00","level":"INFO","msg":"stream: created new stream","id":"lmu95k0q"}
+{"time":"2025-11-01T11:34:49.8004853+01:00","level":"INFO","msg":"handler: started","stream_id":"lmu95k0q"}
+{"time":"2025-11-01T11:34:49.8148075+01:00","level":"INFO","msg":"stream: started","id":"lmu95k0q"}
+{"time":"2025-11-01T11:34:49.8148075+01:00","level":"INFO","msg":"writer: started","stream_id":"lmu95k0q"}
+{"time":"2025-11-01T11:34:49.8148075+01:00","level":"INFO","msg":"sender: started","stream_id":"lmu95k0q"}
+{"time":"2025-11-01T11:40:20.7045675+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/timdadum-personal/llm_playground/lmu95k0q/file_stream\": read tcp 192.168.178.96:62429->35.186.228.49:443: wsarecv: An existing connection was forcibly closed by the remote host."}

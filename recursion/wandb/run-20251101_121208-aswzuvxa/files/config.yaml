@@ -1,0 +1,56 @@
+_wandb:
+    value:
+        cli_version: 0.22.2
+        e:
+            upw2fl3z6933y6s1e76k10zimyta5gib:
+                cpu_count: 4
+                cpu_count_logical: 8
+                disk:
+                    /:
+                        total: "358761885696"
+                        used: "354645164032"
+                email: timdadum@gmail.com
+                executable: c:\Users\timda\anaconda3\python.exe
+                git:
+                    commit: d73afd77cb9f6d7163a5d26033ce2c621579bf7f
+                    remote: https://github.com/timdadum/llm-playground.git
+                host: timdadum_lap
+                memory:
+                    total: "16895152128"
+                os: Windows-10-10.0.26100-SP0
+                program: <python with no main file>
+                python: CPython 3.9.13
+                root: c:\Users\timda\Documents\Repositories\llm-playground\recursion
+                startedAt: "2025-11-01T11:12:08.491666Z"
+                writerId: upw2fl3z6933y6s1e76k10zimyta5gib
+        m: []
+        python_version: 3.9.13
+        t:
+            "1":
+                - 1
+                - 2
+                - 3
+                - 11
+                - 49
+                - 51
+                - 71
+            "2":
+                - 1
+                - 2
+                - 3
+                - 11
+                - 49
+                - 51
+                - 71
+            "3":
+                - 1
+                - 2
+                - 61
+            "4": 3.9.13
+            "5": 0.22.2
+            "6": 4.43.1
+            "8":
+                - 1
+                - 3
+            "12": 0.22.2
+            "13": windows-amd64

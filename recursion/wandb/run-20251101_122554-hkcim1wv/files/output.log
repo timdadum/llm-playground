@@ -1,0 +1,456 @@
+[W&B] Logging enabled.
+[TRAIN] Epoch 1/1
+[TRAIN] step 10 | loss 10.8755
+[TRAIN] step 20 | loss 10.8659
+[TRAIN] step 30 | loss 10.8661
+[TRAIN] step 40 | loss 10.8773
+[TRAIN] step 50 | loss 10.8666
+[EVAL] step 50 | val_loss 43.4111 | val_ppl 7131857134633034752.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 60 | loss 10.8380
+[TRAIN] step 70 | loss 10.8418
+[TRAIN] step 80 | loss 10.8365
+[TRAIN] step 90 | loss 10.8521
+[TRAIN] step 100 | loss 10.8337
+[EVAL] step 100 | val_loss 43.3686 | val_ppl 6835332474107240448.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 110 | loss 10.8350
+[TRAIN] step 120 | loss 10.8149
+[TRAIN] step 130 | loss 10.8141
+[TRAIN] step 140 | loss 10.8416
+[TRAIN] step 150 | loss 10.8100
+[EVAL] step 150 | val_loss 43.3249 | val_ppl 6542904150515120128.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 160 | loss 10.7987
+[TRAIN] step 170 | loss 10.7799
+[TRAIN] step 180 | loss 10.8074
+[TRAIN] step 190 | loss 10.8244
+[TRAIN] step 200 | loss 10.8310
+[EVAL] step 200 | val_loss 43.2566 | val_ppl 6111101872467935232.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 210 | loss 10.8279
+[TRAIN] step 220 | loss 10.8215
+[TRAIN] step 230 | loss 10.8163
+[TRAIN] step 240 | loss 10.8064
+[TRAIN] step 250 | loss 10.8006
+[EVAL] step 250 | val_loss 43.1720 | val_ppl 5615331928623160320.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 260 | loss 10.8004
+[TRAIN] step 270 | loss 10.7906
+[TRAIN] step 280 | loss 10.8147
+[TRAIN] step 290 | loss 10.7625
+[TRAIN] step 300 | loss 10.7446
+[EVAL] step 300 | val_loss 43.0460 | val_ppl 4950419786621197312.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 310 | loss 10.7507
+[TRAIN] step 320 | loss 10.7480
+[TRAIN] step 330 | loss 10.7341
+[TRAIN] step 340 | loss 10.7077
+[TRAIN] step 350 | loss 10.7110
+[EVAL] step 350 | val_loss 42.8725 | val_ppl 4162020239833581568.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 360 | loss 10.6962
+[TRAIN] step 370 | loss 10.6868
+[TRAIN] step 380 | loss 10.7287
+[TRAIN] step 390 | loss 10.6954
+[TRAIN] step 400 | loss 10.6859
+[EVAL] step 400 | val_loss 42.6013 | val_ppl 3173234392556847616.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 410 | loss 10.6713
+[TRAIN] step 420 | loss 10.6385
+[TRAIN] step 430 | loss 10.6132
+[TRAIN] step 440 | loss 10.6256
+[TRAIN] step 450 | loss 10.7370
+[EVAL] step 450 | val_loss 42.2611 | val_ppl 2258157125150807552.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 460 | loss 10.5172
+[TRAIN] step 470 | loss 10.5025
+[TRAIN] step 480 | loss 10.4540
+[TRAIN] step 490 | loss 10.4027
+[TRAIN] step 500 | loss 10.3843
+[EVAL] step 500 | val_loss 41.7746 | val_ppl 1388337526116379904.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 510 | loss 10.3798
+[TRAIN] step 520 | loss 10.5016
+[TRAIN] step 530 | loss 10.3681
+[TRAIN] step 540 | loss 10.3018
+[TRAIN] step 550 | loss 10.2076
+[EVAL] step 550 | val_loss 41.2028 | val_ppl 783705163607281920.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 560 | loss 10.1610
+[TRAIN] step 570 | loss 10.1739
+[TRAIN] step 580 | loss 10.1301
+[TRAIN] step 590 | loss 10.1467
+[TRAIN] step 600 | loss 10.1149
+[EVAL] step 600 | val_loss 40.4714 | val_ppl 377153388729870848.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 610 | loss 10.0608
+[TRAIN] step 620 | loss 9.9125
+[TRAIN] step 630 | loss 9.9893
+[TRAIN] step 640 | loss 9.9174
+[TRAIN] step 650 | loss 9.8212
+[EVAL] step 650 | val_loss 39.7225 | val_ppl 178353388383657472.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 660 | loss 9.8229
+[TRAIN] step 670 | loss 9.7343
+[TRAIN] step 680 | loss 9.6324
+[TRAIN] step 690 | loss 9.5782
+[TRAIN] step 700 | loss 9.6981
+[EVAL] step 700 | val_loss 38.8664 | val_ppl 75764102923662848.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 710 | loss 9.8241
+[TRAIN] step 720 | loss 9.8172
+[TRAIN] step 730 | loss 9.4991
+[TRAIN] step 740 | loss 9.4416
+[TRAIN] step 750 | loss 9.4173
+[EVAL] step 750 | val_loss 38.0704 | val_ppl 34179301885266720.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 760 | loss 9.4665
+[TRAIN] step 770 | loss 9.3944
+[TRAIN] step 780 | loss 9.3949
+[TRAIN] step 790 | loss 9.4438
+[TRAIN] step 800 | loss 9.2348
+[EVAL] step 800 | val_loss 37.2204 | val_ppl 14609343240851568.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 810 | loss 9.1744
+[TRAIN] step 820 | loss 9.3561
+[TRAIN] step 830 | loss 8.8395
+[TRAIN] step 840 | loss 9.4721
+[TRAIN] step 850 | loss 9.2293
+[EVAL] step 850 | val_loss 36.5268 | val_ppl 7301191550697147.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 860 | loss 9.1092
+[TRAIN] step 870 | loss 9.0503
+[TRAIN] step 880 | loss 8.9818
+[TRAIN] step 890 | loss 8.9320
+[TRAIN] step 900 | loss 8.9963
+[EVAL] step 900 | val_loss 35.8832 | val_ppl 3836102658622331.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 910 | loss 8.6729
+[TRAIN] step 920 | loss 8.5141
+[TRAIN] step 930 | loss 8.5642
+[TRAIN] step 940 | loss 8.4357
+[TRAIN] step 950 | loss 8.5821
+[EVAL] step 950 | val_loss 35.4615 | val_ppl 2516116846976333.50
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 960 | loss 8.7091
+[TRAIN] step 970 | loss 8.7343
+[TRAIN] step 980 | loss 8.8668
+[TRAIN] step 990 | loss 8.8991
+[TRAIN] step 1000 | loss 8.6789
+[EVAL] step 1000 | val_loss 35.1920 | val_ppl 1921801342144094.50
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1010 | loss 8.7610
+[TRAIN] step 1020 | loss 8.3657
+[TRAIN] step 1030 | loss 8.1990
+[TRAIN] step 1040 | loss 8.2705
+[TRAIN] step 1050 | loss 8.3977
+[EVAL] step 1050 | val_loss 35.0324 | val_ppl 1638260843396745.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1060 | loss 8.4893
+[TRAIN] step 1070 | loss 8.3892
+[TRAIN] step 1080 | loss 8.4200
+[TRAIN] step 1090 | loss 8.5912
+[TRAIN] step 1100 | loss 8.4621
+[EVAL] step 1100 | val_loss 34.9458 | val_ppl 1502414459687028.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1110 | loss 8.9511
+[TRAIN] step 1120 | loss 8.7957
+[TRAIN] step 1130 | loss 8.6420
+[TRAIN] step 1140 | loss 9.9037
+[TRAIN] step 1150 | loss 9.7151
+[EVAL] step 1150 | val_loss 34.8761 | val_ppl 1401212097936874.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1160 | loss 8.9987
+[TRAIN] step 1170 | loss 8.7308
+[TRAIN] step 1180 | loss 8.4727
+[TRAIN] step 1190 | loss 8.5086
+[TRAIN] step 1200 | loss 8.6213
+[EVAL] step 1200 | val_loss 34.8417 | val_ppl 1353856823285576.75
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1210 | loss 8.7378
+[TRAIN] step 1220 | loss 8.7427
+[TRAIN] step 1230 | loss 8.6730
+[TRAIN] step 1240 | loss 8.5756
+[TRAIN] step 1250 | loss 8.6621
+[EVAL] step 1250 | val_loss 34.8373 | val_ppl 1347816569254579.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1260 | loss 8.8095
+[TRAIN] step 1270 | loss 8.7872
+[TRAIN] step 1280 | loss 8.7206
+[TRAIN] step 1290 | loss 8.7352
+[TRAIN] step 1300 | loss 8.6414
+[EVAL] step 1300 | val_loss 34.7976 | val_ppl 1295418287455569.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1310 | loss 8.6791
+[TRAIN] step 1320 | loss 8.9995
+[TRAIN] step 1330 | loss 8.8389
+[TRAIN] step 1340 | loss 8.8152
+[TRAIN] step 1350 | loss 8.3329
+[EVAL] step 1350 | val_loss 34.7701 | val_ppl 1260250617701258.50
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1360 | loss 8.3069
+[TRAIN] step 1370 | loss 8.3793
+[TRAIN] step 1380 | loss 8.2855
+[TRAIN] step 1390 | loss 8.3919
+[TRAIN] step 1400 | loss 8.6145
+[EVAL] step 1400 | val_loss 34.7770 | val_ppl 1268947706823617.75
+[TRAIN] step 1410 | loss 8.7164
+[TRAIN] step 1420 | loss 8.6150
+[TRAIN] step 1430 | loss 8.5715
+[TRAIN] step 1440 | loss 8.3490
+[TRAIN] step 1450 | loss 8.5535
+[EVAL] step 1450 | val_loss 34.7530 | val_ppl 1238928650297300.25
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1460 | loss 8.4724
+[TRAIN] step 1470 | loss 8.1198
+[TRAIN] step 1480 | loss 8.6055
+[TRAIN] step 1490 | loss 8.7390
+[TRAIN] step 1500 | loss 8.8127
+[EVAL] step 1500 | val_loss 34.7181 | val_ppl 1196427897465477.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1510 | loss 8.6056
+[TRAIN] step 1520 | loss 8.7536
+[TRAIN] step 1530 | loss 8.8101
+[TRAIN] step 1540 | loss 8.6823
+[TRAIN] step 1550 | loss 8.3540
+[EVAL] step 1550 | val_loss 34.6885 | val_ppl 1161464220386318.50
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1560 | loss 8.6809
+[TRAIN] step 1570 | loss 8.5898
+[TRAIN] step 1580 | loss 8.3914
+[TRAIN] step 1590 | loss 8.3616
+[TRAIN] step 1600 | loss 8.2723
+[EVAL] step 1600 | val_loss 34.6810 | val_ppl 1152845758968083.25
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1610 | loss 8.4122
+[TRAIN] step 1620 | loss 8.3743
+[TRAIN] step 1630 | loss 8.3615
+[TRAIN] step 1640 | loss 8.6315
+[TRAIN] step 1650 | loss 8.5599
+[EVAL] step 1650 | val_loss 34.6824 | val_ppl 1154467256318009.50
+[TRAIN] step 1660 | loss 8.5568
+[TRAIN] step 1670 | loss 8.5145
+[TRAIN] step 1680 | loss 8.5037
+[TRAIN] step 1690 | loss 9.0647
+[TRAIN] step 1700 | loss 8.5510
+[EVAL] step 1700 | val_loss 34.6263 | val_ppl 1091451933437335.62
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1710 | loss 8.5584
+[TRAIN] step 1720 | loss 8.5620
+[TRAIN] step 1730 | loss 8.6426
+[TRAIN] step 1740 | loss 8.5954
+[TRAIN] step 1750 | loss 8.4676
+[EVAL] step 1750 | val_loss 34.5987 | val_ppl 1061798455635478.88
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1760 | loss 8.5923
+[TRAIN] step 1770 | loss 8.3975
+[TRAIN] step 1780 | loss 8.4576
+[TRAIN] step 1790 | loss 8.6504
+[TRAIN] step 1800 | loss 8.6218
+[EVAL] step 1800 | val_loss 34.5829 | val_ppl 1045148534025144.75
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1810 | loss 8.6771
+[TRAIN] step 1820 | loss 8.6925
+[TRAIN] step 1830 | loss 8.6108
+[TRAIN] step 1840 | loss 8.7671
+[TRAIN] step 1850 | loss 8.7029
+[EVAL] step 1850 | val_loss 34.5580 | val_ppl 1019396533332596.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1860 | loss 8.6912
+[TRAIN] step 1870 | loss 8.2189
+[TRAIN] step 1880 | loss 8.5354
+[TRAIN] step 1890 | loss 8.4229
+[TRAIN] step 1900 | loss 8.2806
+[EVAL] step 1900 | val_loss 34.5540 | val_ppl 1015310792144216.38
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 1910 | loss 8.3421
+[TRAIN] step 1920 | loss 8.4686
+[TRAIN] step 1930 | loss 8.4438
+[TRAIN] step 1940 | loss 8.2908
+[TRAIN] step 1950 | loss 8.4319
+[EVAL] step 1950 | val_loss 34.5707 | val_ppl 1032412325357537.75
+[TRAIN] step 1960 | loss 8.4565
+[TRAIN] step 1970 | loss 8.3467
+[TRAIN] step 1980 | loss 8.3994
+[TRAIN] step 1990 | loss 8.4827
+[TRAIN] step 2000 | loss 8.4136
+[EVAL] step 2000 | val_loss 34.5690 | val_ppl 1030703805850138.88
+[TRAIN] step 2010 | loss 8.4175
+[TRAIN] step 2020 | loss 8.2076
+[TRAIN] step 2030 | loss 8.2120
+[TRAIN] step 2040 | loss 8.3065
+[TRAIN] step 2050 | loss 8.5360
+[EVAL] step 2050 | val_loss 34.5653 | val_ppl 1026881930384522.50
+[TRAIN] step 2060 | loss 8.5659
+[TRAIN] step 2070 | loss 8.2347
+[TRAIN] step 2080 | loss 8.5874
+[TRAIN] step 2090 | loss 8.8905
+[TRAIN] step 2100 | loss 8.6758
+[EVAL] step 2100 | val_loss 34.5415 | val_ppl 1002678059178489.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 2110 | loss 8.5797
+[TRAIN] step 2120 | loss 8.5908
+[TRAIN] step 2130 | loss 8.4327
+[TRAIN] step 2140 | loss 8.1072
+[TRAIN] step 2150 | loss 8.3915
+[EVAL] step 2150 | val_loss 34.5391 | val_ppl 1000307544595338.38
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 2160 | loss 8.4055
+[TRAIN] step 2170 | loss 8.2012
+[TRAIN] step 2180 | loss 8.4566
+[TRAIN] step 2190 | loss 8.3230
+[TRAIN] step 2200 | loss 8.4793
+[EVAL] step 2200 | val_loss 34.5548 | val_ppl 1016125723775081.88
+[TRAIN] step 2210 | loss 8.4963
+[TRAIN] step 2220 | loss 8.5243
+[TRAIN] step 2230 | loss 8.6291
+[TRAIN] step 2240 | loss 8.5230
+[TRAIN] step 2250 | loss 8.4526
+[EVAL] step 2250 | val_loss 34.5265 | val_ppl 987758155695055.75
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 2260 | loss 8.3890
+[TRAIN] step 2270 | loss 8.2502
+[TRAIN] step 2280 | loss 8.3440
+[TRAIN] step 2290 | loss 8.1981
+[TRAIN] step 2300 | loss 8.3702
+[EVAL] step 2300 | val_loss 34.5117 | val_ppl 973269571052230.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 2310 | loss 8.2003
+[TRAIN] step 2320 | loss 8.2135
+[TRAIN] step 2330 | loss 8.5440
+[TRAIN] step 2340 | loss 8.8165
+[TRAIN] step 2350 | loss 9.0887
+[EVAL] step 2350 | val_loss 34.5046 | val_ppl 966402902060042.38
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 2360 | loss 8.5347
+[TRAIN] step 2370 | loss 8.4243
+[TRAIN] step 2380 | loss 8.2966
+[TRAIN] step 2390 | loss 8.5736
+[TRAIN] step 2400 | loss 8.6084
+[EVAL] step 2400 | val_loss 34.4595 | val_ppl 923798961989970.12
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 2410 | loss 8.5032
+[TRAIN] step 2420 | loss 8.3754
+[TRAIN] step 2430 | loss 8.5707
+[TRAIN] step 2440 | loss 8.5682
+[TRAIN] step 2450 | loss 8.5586
+[EVAL] step 2450 | val_loss 34.4410 | val_ppl 906890138618877.12
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 2460 | loss 8.4995
+[TRAIN] step 2470 | loss 8.3801
+[TRAIN] step 2480 | loss 8.3111
+[TRAIN] step 2490 | loss 8.3169
+[TRAIN] step 2500 | loss 8.5456
+[EVAL] step 2500 | val_loss 34.4344 | val_ppl 900875967376140.62
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 2510 | loss 8.0671
+[TRAIN] step 2520 | loss 8.1562
+[TRAIN] step 2530 | loss 8.2289
+[TRAIN] step 2540 | loss 8.3309
+[TRAIN] step 2550 | loss 8.1652
+[EVAL] step 2550 | val_loss 34.4393 | val_ppl 905269924754555.62
+[TRAIN] step 2560 | loss 8.2625
+[TRAIN] step 2570 | loss 8.2864
+[TRAIN] step 2580 | loss 8.2415
+[TRAIN] step 2590 | loss 8.2808
+[TRAIN] step 2600 | loss 8.4065
+[EVAL] step 2600 | val_loss 34.4043 | val_ppl 874190299791565.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 2610 | loss 8.6293
+[TRAIN] step 2620 | loss 8.5144
+[TRAIN] step 2630 | loss 8.5732
+[TRAIN] step 2640 | loss 8.3087
+[TRAIN] step 2650 | loss 8.5645
+[EVAL] step 2650 | val_loss 34.3348 | val_ppl 815448142006152.88
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 2660 | loss 8.5600
+[TRAIN] step 2670 | loss 8.4408
+[TRAIN] step 2680 | loss 8.2239
+[TRAIN] step 2690 | loss 8.0143
+[TRAIN] step 2700 | loss 8.2760
+[EVAL] step 2700 | val_loss 34.2841 | val_ppl 775133698668287.00
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 2710 | loss 8.2623
+[TRAIN] step 2720 | loss 8.2991
+[TRAIN] step 2730 | loss 8.3471
+[TRAIN] step 2740 | loss 7.9719
+[TRAIN] step 2750 | loss 8.5325
+[EVAL] step 2750 | val_loss 34.3011 | val_ppl 788466439937647.88
+[TRAIN] step 2760 | loss 7.9664
+[TRAIN] step 2770 | loss 7.9191
+[TRAIN] step 2780 | loss 8.0513
+[TRAIN] step 2790 | loss 8.0219
+[TRAIN] step 2800 | loss 7.9277
+[EVAL] step 2800 | val_loss 34.3382 | val_ppl 818222032344640.62
+[TRAIN] step 2810 | loss 8.4444
+[TRAIN] step 2820 | loss 8.3366
+[TRAIN] step 2830 | loss 8.3163
+[TRAIN] step 2840 | loss 7.9002
+[TRAIN] step 2850 | loss 7.9923
+[EVAL] step 2850 | val_loss 34.2610 | val_ppl 757477406267376.62
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 2860 | loss 8.3148
+[TRAIN] step 2870 | loss 8.0335
+[TRAIN] step 2880 | loss 8.4580
+[TRAIN] step 2890 | loss 8.1280
+[TRAIN] step 2900 | loss 8.2066
+[EVAL] step 2900 | val_loss 34.2033 | val_ppl 715009436782786.25
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 2910 | loss 8.4360
+[TRAIN] step 2920 | loss 8.3388
+[TRAIN] step 2930 | loss 8.1870
+[TRAIN] step 2940 | loss 8.1470
+[TRAIN] step 2950 | loss 8.6789
+[EVAL] step 2950 | val_loss 34.1450 | val_ppl 674482013963401.38
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 2960 | loss 8.6971
+[TRAIN] step 2970 | loss 8.3052
+[TRAIN] step 2980 | loss 8.5920
+[TRAIN] step 2990 | loss 8.3082
+[TRAIN] step 3000 | loss 8.5147
+[EVAL] step 3000 | val_loss 34.0587 | val_ppl 618710413917386.62
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 3010 | loss 8.5698
+[TRAIN] step 3020 | loss 8.1060
+[TRAIN] step 3030 | loss 8.4797
+[TRAIN] step 3040 | loss 8.3720
+[TRAIN] step 3050 | loss 8.1310
+[EVAL] step 3050 | val_loss 34.0072 | val_ppl 587691199690572.62
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 3060 | loss 8.4684
+[TRAIN] step 3070 | loss 8.3581
+[TRAIN] step 3080 | loss 8.2354
+[TRAIN] step 3090 | loss 7.9258
+[TRAIN] step 3100 | loss 8.4187
+[EVAL] step 3100 | val_loss 34.0050 | val_ppl 586403452884563.25
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 3110 | loss 8.2001
+[TRAIN] step 3120 | loss 8.3165
+[TRAIN] step 3130 | loss 8.5069
+[TRAIN] step 3140 | loss 8.4270
+[TRAIN] step 3150 | loss 8.3666
+[EVAL] step 3150 | val_loss 33.9263 | val_ppl 542031252976207.31
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 3160 | loss 8.3190
+[TRAIN] step 3170 | loss 8.1760
+[TRAIN] step 3180 | loss 8.6417
+[TRAIN] step 3190 | loss 8.5649
+[TRAIN] step 3200 | loss 8.2735
+[EVAL] step 3200 | val_loss 33.8503 | val_ppl 502360987863206.44
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 3210 | loss 8.4190
+[TRAIN] step 3220 | loss 8.2526
+[TRAIN] step 3230 | loss 8.0802
+[TRAIN] step 3240 | loss 8.0659
+[TRAIN] step 3250 | loss 8.0886
+[EVAL] step 3250 | val_loss 33.8298 | val_ppl 492158724264593.31
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 3260 | loss 7.9345
+[TRAIN] step 3270 | loss 8.2943
+[TRAIN] step 3280 | loss 8.0988
+[TRAIN] step 3290 | loss 7.6463
+[TRAIN] step 3300 | loss 8.0535
+[EVAL] step 3300 | val_loss 33.9132 | val_ppl 534975765935537.62
+[TRAIN] step 3310 | loss 8.5948
+[TRAIN] step 3320 | loss 8.4400

@@ -1,0 +1,43 @@
+{
+  "K": 8,
+  "T": 4,
+  "amp": true,
+  "architectures": [
+    "TRMModel"
+  ],
+  "attn_implementation": "sdpa",
+  "betas": [
+    0.9,
+    0.95
+  ],
+  "bos_token_id": 50256,
+  "context_length": 64,
+  "d_ff": 16,
+  "d_model": 32,
+  "data_out_dir": "data/shards",
+  "dropout": 0.1,
+  "eos_token_id": 50256,
+  "eval_every_steps": 50,
+  "grad_accum_steps": 4,
+  "grad_clip": 1.0,
+  "init_range": 0.02,
+  "layer_norm_eps": 1e-05,
+  "log_every": 10,
+  "lr": 0.0001,
+  "model_type": "basic_gpt",
+  "n": 2,
+  "n_head": 2,
+  "n_layer": 2,
+  "out_dir": "checkpoints",
+  "pad_token_id": 50256,
+  "pos_embedding_type": "absolute",
+  "project_name": "basic-llm",
+  "save_every_epochs": 1,
+  "seed": 42,
+  "tie_weights": true,
+  "torch_dtype": "float32",
+  "transformers_version": "4.43.1",
+  "use_cache": false,
+  "vocab_size": 50257,
+  "weight_decay": 0.1
+}

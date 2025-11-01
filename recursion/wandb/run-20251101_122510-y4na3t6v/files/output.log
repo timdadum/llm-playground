@@ -1,0 +1,21 @@
+[W&B] Logging enabled.
+[TRAIN] Epoch 1/1
+[TRAIN] step 10 | loss 10.8430
+[TRAIN] step 20 | loss 10.8298
+[TRAIN] step 30 | loss 10.8475
+[TRAIN] step 40 | loss 10.8273
+[TRAIN] step 50 | loss 10.8241
+[EVAL] step 50 | val_loss 21.6660 | val_ppl 2566948429.55
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 60 | loss 10.8202
+[TRAIN] step 70 | loss 10.8229
+[RUNTIME] Device: cpu
+[MODEL] TRM (iterative refinement).
+[MODEL] Parameters: 1.62M
+[SHARD] Streamed and materialized 100 examples from 'wikimedia/wikipedia' (train).
+[SHARD] Saved train split (98 samples) to data\shards\train
+[SHARD] Saved val split (2 samples) to data\shards\val
+[SHARD] Saved test split (0 samples) to data\shards\test
+Token indices sequence length is longer than the specified maximum sequence length for this model (22847 > 1024). Running this sequence through the model will result in indexing errors
+[DATA] Sample batch: torch.Size([2, 64]) torch.Size([2, 64])
+[DATA] Sample decode: The alkali metals consist of the chemical elements lithium (Li), sodium (Na), potassium (K), rubidium (Rb), caesium (Cs)

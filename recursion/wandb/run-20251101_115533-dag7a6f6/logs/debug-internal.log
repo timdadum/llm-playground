@@ -1,0 +1,10 @@
+{"time":"2025-11-01T11:55:36.0393996+01:00","level":"INFO","msg":"stream: starting","core version":"0.22.2"}
+{"time":"2025-11-01T11:55:36.3793569+01:00","level":"INFO","msg":"stream: created new stream","id":"dag7a6f6"}
+{"time":"2025-11-01T11:55:36.3793569+01:00","level":"INFO","msg":"handler: started","stream_id":"dag7a6f6"}
+{"time":"2025-11-01T11:55:36.381036+01:00","level":"INFO","msg":"stream: started","id":"dag7a6f6"}
+{"time":"2025-11-01T11:55:36.381036+01:00","level":"INFO","msg":"writer: started","stream_id":"dag7a6f6"}
+{"time":"2025-11-01T11:55:36.381036+01:00","level":"INFO","msg":"sender: started","stream_id":"dag7a6f6"}
+{"time":"2025-11-01T12:00:37.3285127+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/timdadum-personal/llm_playground/dag7a6f6/file_stream\": read tcp 192.168.178.96:65486->35.186.228.49:443: wsarecv: An existing connection was forcibly closed by the remote host."}
+{"time":"2025-11-01T12:01:22.3106339+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/timdadum-personal/llm_playground/dag7a6f6/file_stream\": read tcp 192.168.178.96:64193->35.186.228.49:443: wsarecv: An existing connection was forcibly closed by the remote host."}
+{"time":"2025-11-01T12:05:22.3164343+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/timdadum-personal/llm_playground/dag7a6f6/file_stream\": read tcp 192.168.178.96:64954->35.186.228.49:443: wsarecv: An existing connection was forcibly closed by the remote host."}
+{"time":"2025-11-01T12:05:37.3171496+01:00","level":"INFO","msg":"api: retrying error","error":"Post \"https://api.wandb.ai/files/timdadum-personal/llm_playground/dag7a6f6/file_stream\": read tcp 192.168.178.96:64958->35.186.228.49:443: wsarecv: An existing connection was forcibly closed by the remote host."}

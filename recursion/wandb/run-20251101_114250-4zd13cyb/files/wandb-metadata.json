@@ -1,0 +1,26 @@
+{
+  "os": "Windows-10-10.0.26100-SP0",
+  "python": "CPython 3.9.13",
+  "startedAt": "2025-11-01T10:42:50.402505Z",
+  "program": "<python with no main file>",
+  "git": {
+    "remote": "https://github.com/timdadum/llm-playground.git",
+    "commit": "d73afd77cb9f6d7163a5d26033ce2c621579bf7f"
+  },
+  "email": "timdadum@gmail.com",
+  "root": "c:\\Users\\timda\\Documents\\Repositories\\llm-playground\\recursion",
+  "host": "timdadum_lap",
+  "executable": "c:\\Users\\timda\\anaconda3\\python.exe",
+  "cpu_count": 4,
+  "cpu_count_logical": 8,
+  "disk": {
+    "/": {
+      "total": "358761885696",
+      "used": "355402248192"
+    }
+  },
+  "memory": {
+    "total": "16895152128"
+  },
+  "writerId": "10f5j22rrqi7vn4epg7mnsfk5v3v4qo4"
+}

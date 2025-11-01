@@ -1,0 +1,101 @@
+[34m[1mwandb[0m: Detected [huggingface_hub.inference] in use.
+[34m[1mwandb[0m: Use W&B Weave for improved LLM call tracing. Install Weave with `pip install weave` then add `import weave` to the top of your script.
+[34m[1mwandb[0m: For more information, check out the docs at: https://weave-docs.wandb.ai/
+[W&B] Logging enabled.
+[TRAIN] Epoch 1/1
+[TRAIN] step 10 | loss 10.8306
+[TRAIN] step 20 | loss 10.8266
+[TRAIN] step 30 | loss 10.8435
+[TRAIN] step 40 | loss 10.8249
+[TRAIN] step 50 | loss 10.8372
+[EVAL] step 50 | val_loss 21.6477 | val_ppl 2520373715.28
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 60 | loss 10.8126
+[TRAIN] step 70 | loss 10.8214
+[TRAIN] step 80 | loss 10.8270
+[TRAIN] step 90 | loss 10.8288
+[TRAIN] step 100 | loss 10.8169
+[EVAL] step 100 | val_loss 21.6362 | val_ppl 2491578354.83
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 110 | loss 10.8198
+[TRAIN] step 120 | loss 10.8002
+[TRAIN] step 130 | loss 10.7917
+[TRAIN] step 140 | loss 10.8103
+[TRAIN] step 150 | loss 10.7970
+[EVAL] step 150 | val_loss 21.6238 | val_ppl 2461013693.80
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 160 | loss 10.8091
+[TRAIN] step 170 | loss 10.7816
+[TRAIN] step 180 | loss 10.8019
+[TRAIN] step 190 | loss 10.8145
+[TRAIN] step 200 | loss 10.7984
+[EVAL] step 200 | val_loss 21.6046 | val_ppl 2414040040.98
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 210 | loss 10.7882
+[TRAIN] step 220 | loss 10.8115
+[TRAIN] step 230 | loss 10.8086
+[TRAIN] step 240 | loss 10.8059
+[TRAIN] step 250 | loss 10.7912
+[EVAL] step 250 | val_loss 21.5802 | val_ppl 2355962074.78
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 260 | loss 10.7815
+[TRAIN] step 270 | loss 10.7873
+[TRAIN] step 280 | loss 10.8002
+[TRAIN] step 290 | loss 10.7703
+[TRAIN] step 300 | loss 10.7582
+[EVAL] step 300 | val_loss 21.5435 | val_ppl 2271019427.50
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 310 | loss 10.7392
+[TRAIN] step 320 | loss 10.7657
+[TRAIN] step 330 | loss 10.7483
+[TRAIN] step 340 | loss 10.7357
+[TRAIN] step 350 | loss 10.7348
+[EVAL] step 350 | val_loss 21.4922 | val_ppl 2157455093.99
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 360 | loss 10.7136
+[TRAIN] step 370 | loss 10.7039
+[TRAIN] step 380 | loss 10.7408
+[TRAIN] step 390 | loss 10.7240
+[TRAIN] step 400 | loss 10.7282
+[EVAL] step 400 | val_loss 21.4115 | val_ppl 1990186815.80
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 410 | loss 10.7144
+[TRAIN] step 420 | loss 10.7069
+[TRAIN] step 430 | loss 10.6833
+[TRAIN] step 440 | loss 10.6946
+[TRAIN] step 450 | loss 10.7395
+[EVAL] step 450 | val_loss 21.3107 | val_ppl 1799450040.69
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 460 | loss 10.6318
+[TRAIN] step 470 | loss 10.6168
+[TRAIN] step 480 | loss 10.5866
+[TRAIN] step 490 | loss 10.5632
+[TRAIN] step 500 | loss 10.5520
+[EVAL] step 500 | val_loss 21.1639 | val_ppl 1553648158.37
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 510 | loss 10.5548
+[TRAIN] step 520 | loss 10.6052
+[TRAIN] step 530 | loss 10.5111
+[TRAIN] step 540 | loss 10.4823
+[TRAIN] step 550 | loss 10.4261
+[EVAL] step 550 | val_loss 20.9859 | val_ppl 1300332751.70
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 560 | loss 10.4150
+[TRAIN] step 570 | loss 10.4069
+[TRAIN] step 580 | loss 10.3843
+[TRAIN] step 590 | loss 10.3740
+[TRAIN] step 600 | loss 10.3762
+[EVAL] step 600 | val_loss 20.7469 | val_ppl 1023898313.84
+[CKPT] Saved checkpoint to checkpoints\checkpoint-best
+[TRAIN] step 610 | loss 10.3188
+[TRAIN] step 620 | loss 10.2569
+[RUNTIME] Device: cpu
+[MODEL] TRM (iterative refinement).
+[MODEL] Parameters: 1.62M
+[SHARD] Streamed and materialized 100 examples from 'wikimedia/wikipedia' (train).
+[SHARD] Saved train split (98 samples) to data\shards\train
+[SHARD] Saved val split (2 samples) to data\shards\val
+[SHARD] Saved test split (0 samples) to data\shards\test
+Token indices sequence length is longer than the specified maximum sequence length for this model (22847 > 1024). Running this sequence through the model will result in indexing errors
+[DATA] Sample batch: torch.Size([2, 64]) torch.Size([2, 64])
+[DATA] Sample decode: The alkali metals consist of the chemical elements lithium (Li), sodium (Na), potassium (K), rubidium (Rb), caesium (Cs)
