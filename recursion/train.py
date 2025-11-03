@@ -97,20 +97,11 @@ def _build_model(config: ModelConfig, *, use_trm: bool, n: int, T: int, device: 
         model = BasicGPT(config).to(device)
         print("[MODEL] BasicGPT (causal LM).")
     total_params = sum(p.numel() for p in model.parameters())
-    print(f"[MODEL] Parameters: {total_params/1e6:.2f}M")
+    print(f"[MODEL] Parameters: {total_params/1e6:.2f}M"z)
     return model
 
-
-def _load_checkpoint_into(model, path: str, map_location="cpu"):
-    ckpt = torch.load(path, map_location=map_location)
-    state = ckpt.get("model_state", ckpt)
-    model.load_state_dict(state, strict=True)
-    print(f"[CKPT] Loaded weights from: {path}")
-    return ckpt
-
-
-def _save_checkpoint(model, config, optimizer, step: int, val_metric: float, out_dir: str, tag: str):
-    ckpt_dir = Path(out_dir) / f"checkpoint-{tag}"
+def _save_checkpoint(model, config, optimizer, step: int, val_metric: float, out_dir: str, tag: str, run_name: str = None):
+    ckpt_dir = Path(out_dir) / (run_name or f"checkpoint-{tag}")
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     model.save_pretrained(ckpt_dir, safe_serialization=False)
@@ -226,7 +217,6 @@ def parse_args():
     parser.add_argument("--persistent_workers", action=BooleanOptionalAction, default=False)
 
     # dataset/sharding
-    parser.add_argument("--do_shard", action=BooleanOptionalAction, default=True)
     parser.add_argument("--ds_name", type=str, default="wikimedia/wikipedia")
     parser.add_argument("--ds_config", type=str, default="20231101.en")
     parser.add_argument("--hf_split", type=str, default="train")
@@ -237,6 +227,7 @@ def parse_args():
     # I/O & logging
     parser.add_argument("--load_path", type=str, default=None)
     parser.add_argument("--save_best", action=BooleanOptionalAction, default=True)
+    parser.add_argument("--run_name", type=str, default=None)
     parser.add_argument("--project", type=str, default="llm_playground")
     parser.add_argument("--wandb", action=BooleanOptionalAction, default=True)
     parser.add_argument("--use_trm", action=BooleanOptionalAction, default=False)
@@ -262,23 +253,24 @@ def main():
         model.to(device)
     _enable_flash_sdpa_if_possible()
     
-    if args.do_shard:
-        split_and_shard(
-            ds_name=args.ds_name,
-            config=args.ds_config,
-            hf_split=args.hf_split,
-            out_dir=config.data_out_dir,
-            id_key="id",
-            text_key="text",
-            split_fracs=(0.98, 0.01, 0.01),
-            max_shard_size=args.max_shard_size,
-            num_proc=args.shard_num_proc,
-            shard_max_examples=args.shard_max_examples
-        )
+    # Create run name folder
+    if args.run_name:
+        config.out_dir = os.path.join(config.out_dir, args.run_name)
+        os.makedirs(config.out_dir, exist_ok=True)
+    
+    split_and_shard(
+        ds_name=args.ds_name,
+        config=args.ds_config,
+        hf_split=args.hf_split,
+        out_dir=config.data_out_dir,
+        n_samples=args.shard_max_examples or 1_000_000,
+        chunk_rows=20_000,
+        compress=False
+    )
 
-    train_hfds = load_split(config.data_out_dir, "train", shard_by_rank=True, shuffle_seed=42)
-    eval_hfds = load_split(config.data_out_dir, "val", shard_by_rank=True, shuffle_seed=43)
-    test_hfds = load_split(config.data_out_dir, "test", shard_by_rank=True, shuffle_seed=44)
+    train_hfds = load_split(config.data_out_dir, "train", shuffle_seed=42)
+    eval_hfds = load_split(config.data_out_dir, "val", shuffle_seed=43)
+    test_hfds = load_split(config.data_out_dir, "test", shuffle_seed=44)
 
     train_loader, eval_loader, test_loader = build_packed_dataloaders(
         train_hfds, eval_hfds, test_hfds,
@@ -297,8 +289,8 @@ def main():
     # W&B
     if args.wandb:
         import wandb
-        wandb.init(project=args.project)
-        print("[W&B] Logging enabled.")
+        wandb.init(project=args.project, name=args.run_name)
+        print(f"[W&B] Logging enabled. Run name: {args.run_name or '(auto-generated)'}")
         wandb.watch(model, log="gradients", log_freq=200)
 
     # Early exit path
@@ -334,6 +326,28 @@ def main():
                     else:
                         out = model(input_ids=x, attention_mask=mask, labels=labels)
                     loss = _extract_loss(out) / config.grad_accum_steps
+                    
+                # Log inner mechanics
+                rs = getattr(out, "refinement_stats", None)
+                if rs is not None:
+                    T, n = rs["T"], rs["n"]
+                    log = {"train/loss": float(out.loss.item())}
+
+                    # Per-outer magnitudes and ratios
+                    for t in range(T):
+                        log[f"refine/dy_l2/t{t}"]    = rs["dy_l2_per_outer"][t]
+                        log[f"refine/dy_ratio/t{t}"] = rs["dy_ratio_across_T"][t]
+
+                    # Per-inner magnitudes and ratios (nested under each outer step)
+                    for t in range(T):
+                        for i in range(n):
+                            log[f"refine/dz_l2/t{t}/i{i}"]    = rs["dz_l2_per_outer"][t][i]
+                            log[f"refine/dz_ratio/t{t}/i{i}"] = rs["dz_ratio_per_outer"][t][i]
+
+                    # Optional quick summaries
+                    log["refine/dy_l2_sum_over_T"] = sum(rs["dy_l2_per_outer"])
+                    log["refine/dz_l2_sum_over_all"] = sum(sum(x) for x in rs["dz_l2_per_outer"])
+                    wandb.log(log, commit=True)
 
                 scaler.scale(loss).backward()
 
@@ -362,7 +376,7 @@ def main():
 
                     if args.save_best and val_ppl < best_metric:
                         best_metric = val_ppl
-                        _save_checkpoint(model, config, optimizer, global_step, best_metric, config.out_dir, "best")
+                        _save_checkpoint(model, config, optimizer, global_step, best_metric, config.out_dir, f"{args.run_name}_[best]")
 
         # Final eval + save
         val_loss, val_ppl = evaluate(model, eval_loader, device, use_trm=args.use_trm, n=args.n or config.n, T=args.T or config.T)
@@ -371,8 +385,7 @@ def main():
             wandb.log({"final/val_loss": val_loss, "final/val_ppl": val_ppl, "final/epochs": args.epochs}, step=global_step)
             wandb.finish()
 
-        _save_checkpoint(model, config, optimizer, global_step, val_ppl, config.out_dir, f"e{args.epochs}_step{global_step}")
-
+        _save_checkpoint(model, config, optimizer, global_step, val_ppl, config.out_dir, f"e{args.epochs}_step{global_step}", args.run_name)
 
 if __name__ == "__main__":
     main()

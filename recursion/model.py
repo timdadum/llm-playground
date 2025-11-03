@@ -325,6 +325,7 @@ class TRMModel(PreTrainedModel):
         self.config.use_cache = False
         self.config.tie_word_embeddings = True
         self.config.tie_weights = True
+
         self.context_length = context_length if context_length else config.context_length
         self.K = K if K is not None else config.K
 
@@ -334,13 +335,13 @@ class TRMModel(PreTrainedModel):
         self.net       = TRMTinyNet(config, n_layers=n_layers)
         self.lm_head   = nn.Linear(config.d_model, config.vocab_size, bias=False)
 
-        # optional halting
         self.use_halting = use_halting_head
         if self.use_halting:
             self.halt_head = nn.Linear(config.d_model, 1)
 
-        self.inner_n = int(n)
-        self.outer_T = int(T)
+        # use class parameters for loops
+        self.n = int(n)   # inner steps
+        self.T = int(T)   # outer steps
 
         self.apply(self._init_weights)
         self.tie_weights()
@@ -351,7 +352,7 @@ class TRMModel(PreTrainedModel):
         if isinstance(m, nn.Linear) and m.bias is not None:
             nn.init.zeros_(m.bias)
 
-    # helpers
+    # ------------- helpers -------------
     def _embed(self, ids: torch.LongTensor) -> torch.Tensor:
         B, L = ids.shape
         pos = torch.arange(L, device=ids.device)
@@ -362,10 +363,11 @@ class TRMModel(PreTrainedModel):
         return self.lm_head(y)
 
     @staticmethod
-    def _calculate_K_cross_entropy(logits: torch.Tensor, nextk_grid_labels: torch.Tensor) -> torch.Tensor:
+    def _k_ce(logits: torch.Tensor, nextk_grid_labels: torch.Tensor, K: int) -> torch.Tensor:
         B, L, V = logits.shape
-        _, L2, K = nextk_grid_labels.shape
+        _, L2, Klabels = nextk_grid_labels.shape
         assert L == L2
+        K = min(K, Klabels)
         loss, count = 0.0, 0
         for k in range(K):
             off = k + 1
@@ -376,6 +378,30 @@ class TRMModel(PreTrainedModel):
             loss += F.cross_entropy(lk.reshape(-1, V).float(), yk.reshape(-1).long(), ignore_index=-100)
             count += 1
         return loss / max(1, count)
+
+    @staticmethod
+    def _l2_mean(t: torch.Tensor) -> float:
+        # (B, L, D) -> scalar mean L2 over batch & sequence
+        with torch.no_grad():
+            return t.detach().pow(2).sum(dim=-1).sqrt().mean().item()
+
+    @staticmethod
+    def _normalize(lst: list[float]) -> list[float]:
+        s = float(sum(lst))
+        if s <= 0.0:
+            return [0.0 for _ in lst]
+        return [x / s for x in lst]
+
+    def _compute_ratios(
+        self,
+        dz_l2_per_outer: list[list[float]],  # T lists of length n
+        dy_l2_per_outer: list[float],        # length T
+    ) -> tuple[list[list[float]], list[float]]:
+        # per-outer: normalize inner dz magnitudes
+        dz_ratio_per_outer = [self._normalize(mags) for mags in dz_l2_per_outer]
+        # across T: normalize outer dy magnitudes
+        dy_ratio_across_T  = self._normalize(dy_l2_per_outer)
+        return dz_ratio_per_outer, dy_ratio_across_T
 
     # generation helper (no KV cache)
     def prepare_inputs_for_generation(
@@ -388,21 +414,12 @@ class TRMModel(PreTrainedModel):
             attention_mask = torch.ones_like(input_ids)
         return {"input_ids": input_ids, "attention_mask": attention_mask, "use_cache": False}
 
-    # HF embedding hooks
-    def get_input_embeddings(self):
-        return self.token_emb
-
-    def set_input_embeddings(self, new_emb):
-        self.token_emb = new_emb
-
-    def get_output_embeddings(self):
-        return self.lm_head
-
-    def set_output_embeddings(self, new_out):
-        self.lm_head = new_out
-
-    def tie_weights(self):
-        self.lm_head.weight = self.token_emb.weight
+    # HF hooks
+    def get_input_embeddings(self): return self.token_emb
+    def set_input_embeddings(self, new_emb): self.token_emb = new_emb
+    def get_output_embeddings(self): return self.lm_head
+    def set_output_embeddings(self, new_out): self.lm_head = new_out
+    def tie_weights(self): self.lm_head.weight = self.token_emb.weight
 
     def forward(
         self,
@@ -410,9 +427,6 @@ class TRMModel(PreTrainedModel):
         labels: Optional[torch.LongTensor] = None,
         nextk_grid_labels: Optional[torch.Tensor] = None,
         answer_init_ids: Optional[torch.LongTensor] = None,
-        n: Optional[int] = None,
-        T: Optional[int] = None,
-        return_all_steps: bool = False,
         **kwargs,
     ):
         device = input_ids.device
@@ -435,36 +449,45 @@ class TRMModel(PreTrainedModel):
             answer_init_ids = answer_init_ids[:, -L:]
         y = self._embed(answer_init_ids) if answer_init_ids is not None else torch.zeros_like(x, device=device)
 
-        inner_n = int(n if n is not None else self.inner_n)
-        outer_T = int(T if T is not None else self.outer_T)
-
-        all_logits = []
         total_loss = 0.0 if self.training else None
         loss_steps = 0
+        all_logits = []
 
-        for _t in range(outer_T):
-            for _ in range(inner_n):
+        # --- refinement tracking ---
+        dz_l2_per_outer: list[list[float]] = []
+        dy_l2_per_outer: list[float] = []
+
+        for t in range(self.T):
+            inner_mags: list[float] = []
+
+            # inner loop: refine z (n steps)
+            for i in range(self.n):
                 dz = self.net(x, y, z)
                 z  = z + dz
+                inner_mags.append(self._l2_mean(dz))
 
+            dz_l2_per_outer.append(inner_mags)
+
+            # outer step: refine y (1 step)
             dy = self.net(y, z)
             y  = y + dy
+            dy_l2_per_outer.append(self._l2_mean(dy))
 
+            # readout & loss
             logits_t = self._reverse_embed(y)
-
-            if return_all_steps:
-                all_logits.append(logits_t)
+            all_logits.append(logits_t)
 
             if nextk_grid_labels is not None:
-                lbl = nextk_grid_labels[:, :, :self.K] if nextk_grid_labels.size(-1) > self.K else nextk_grid_labels
-                step_loss = self._calculate_K_cross_entropy(logits_t, lbl)
+                step_loss = self._k_ce(logits_t, nextk_grid_labels, self.K)
             elif labels is not None:
                 shift_logits = logits_t[:, :-1, :]
                 shift_labels = labels[:, 1:]
                 V = shift_logits.size(-1)
-                step_loss = F.cross_entropy(shift_logits.reshape(-1, V).float(),
-                                            shift_labels.reshape(-1).long(),
-                                            ignore_index=-100)
+                step_loss = F.cross_entropy(
+                    shift_logits.reshape(-1, V).float(),
+                    shift_labels.reshape(-1).long(),
+                    ignore_index=-100
+                )
             else:
                 step_loss = None
 
@@ -475,10 +498,20 @@ class TRMModel(PreTrainedModel):
         if loss_steps > 0:
             total_loss = total_loss / loss_steps
 
-        final_logits = logits_t
-        if return_all_steps and len(all_logits) > 0:
-            all_logits = torch.stack(all_logits, dim=0)
-        else:
-            all_logits = None
+        final_logits = all_logits[-1]
 
-        return CausalLMOutput(loss=total_loss, logits=final_logits)
+        # ratios
+        dz_ratio_per_outer, dy_ratio_across_T = self._compute_ratios(dz_l2_per_outer, dy_l2_per_outer)
+
+        out = CausalLMOutput(loss=total_loss, logits=final_logits)
+        out.__dict__.update({
+            "refinement_stats": {
+                "dz_l2_per_outer": dz_l2_per_outer,           # [T][n]
+                "dy_l2_per_outer": dy_l2_per_outer,           # [T]
+                "dz_ratio_per_outer": dz_ratio_per_outer,     # [T][n], sums to 1 per t
+                "dy_ratio_across_T": dy_ratio_across_T,       # [T], sums to 1 across t
+                "n": self.n,
+                "T": self.T,
+            }
+        })
+        return out

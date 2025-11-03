@@ -454,3 +454,4 @@
 [EVAL] step 3300 | val_loss 33.9132 | val_ppl 534975765935537.62
 [TRAIN] step 3310 | loss 8.5948
 [TRAIN] step 3320 | loss 8.4400
+[34m[1mwandb[0m: [33mWARNING[0m Fatal error while uploading data. Some run data will not be synced, but it will still be written to disk. Use `wandb sync` at the end of the run to try uploading.
