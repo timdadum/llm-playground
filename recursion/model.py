@@ -427,6 +427,7 @@ class TRMModel(PreTrainedModel):
         labels: Optional[torch.LongTensor] = None,
         nextk_grid_labels: Optional[torch.Tensor] = None,
         answer_init_ids: Optional[torch.LongTensor] = None,
+        return_token_traces: bool = False,
         **kwargs,
     ):
         device = input_ids.device
@@ -451,31 +452,36 @@ class TRMModel(PreTrainedModel):
 
         total_loss = 0.0 if self.training else None
         loss_steps = 0
-        all_logits = []
+        all_logits: list[torch.Tensor] = []
 
         # --- refinement tracking ---
         dz_l2_per_outer: list[list[float]] = []
         dy_l2_per_outer: list[float] = []
+        token_traces: list[torch.Tensor] = []  # each is (B, L) LongTensor
 
-        for t in range(self.T):
+        for _ in range(self.T):
             inner_mags: list[float] = []
 
             # inner loop: refine z (n steps)
-            for i in range(self.n):
+            for _ in range(self.n):
                 dz = self.net(x, y, z)
-                z  = z + dz
+                z = z + dz
                 inner_mags.append(self._l2_mean(dz))
 
             dz_l2_per_outer.append(inner_mags)
 
             # outer step: refine y (1 step)
             dy = self.net(y, z)
-            y  = y + dy
+            y = y + dy
             dy_l2_per_outer.append(self._l2_mean(dy))
 
             # readout & loss
-            logits_t = self._reverse_embed(y)
+            logits_t = self._reverse_embed(y)  # (B, L, V)
             all_logits.append(logits_t)
+
+            if return_token_traces:
+                tokens_t = logits_t.argmax(dim=-1)  # (B, L)
+                token_traces.append(tokens_t.detach())
 
             if nextk_grid_labels is not None:
                 step_loss = self._k_ce(logits_t, nextk_grid_labels, self.K)
@@ -514,4 +520,7 @@ class TRMModel(PreTrainedModel):
                 "T": self.T,
             }
         })
+        if return_token_traces:
+            out.__dict__["token_traces"] = token_traces  # list length T of (B, L)
+
         return out

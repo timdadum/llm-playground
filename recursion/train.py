@@ -174,6 +174,38 @@ def build_config_from_args(args) -> ModelConfig:
             kwargs[name] = _coerce_value(val, default)
     return ModelConfig(**kwargs)
 
+def _decode(ids, tokenizer, max_chars=120):
+    # ids: (L,) LongTensor
+    txt = tokenizer.decode(ids.tolist(), skip_special_tokens=True)
+    txt = txt.replace("\n", " ")
+    return txt[:max_chars]
+
+@torch.no_grad()
+def preview_trm_refinement(model, tokenizer, batch, device, *, k=3, max_chars=120):
+    model.eval()
+    x = batch["input_ids"].to(device)
+    labels = batch.get("labels")
+    if labels is not None:
+        labels = labels.to(device)
+
+    with autocast("cuda", enabled=(device == "cuda" and getattr(model.config, "amp", True))):
+        out = model(input_ids=x, labels=labels, return_token_traces=True)
+
+    token_traces = out.__dict__.get("token_traces", None)
+    if not token_traces:
+        print("[TRM PREVIEW] No token traces available.")
+        return
+
+    k = min(k, x.size(0))
+    print("--------")
+    gt = [_decode(x[i], tokenizer, max_chars) for i in range(k)]
+    print(f"Ground truth: {gt}")
+    for t, tok_ids in enumerate(token_traces, start=1):
+        itxt = [_decode(tok_ids[i], tokenizer, max_chars) for i in range(k)]
+        print(f"Iteration {t}: {itxt}")
+    print("--------")
+    model.train()
+
 
 # ------------------------
 # CLI
@@ -238,6 +270,8 @@ def parse_args():
 
     return parser.parse_args()
 
+
+
 # ------------------------
 # Main
 # ------------------------
@@ -299,19 +333,13 @@ def main():
         print(f"[W&B] Logging enabled. Run name: {args.run_name or '(auto-generated)'}")
         wandb.watch(model, log="gradients", log_freq=200)
 
-    # Early exit path
-    if args.eval_only and not args.do_train:
-        val_loss, val_ppl = evaluate(model, eval_loader, device, use_trm=args.use_trm, n=args.n or config.n, T=args.T or config.T)
-        print(f"[EVAL-ONLY] val_loss={val_loss:.4f} | val_ppl={val_ppl:.2f}")
-        return
-
     # Train
     optimizer = AdamW(model.parameters(), lr=config.lr, betas=config.betas, weight_decay=config.weight_decay)
     scaler = GradScaler("cuda", enabled=(device == "cuda" and getattr(config, "amp", True)))
 
     model.train().to(device)
     global_step = 0
-    samples_seen = 0  # <-- new counter
+    samples_seen = 0
     best_metric = float("inf")
     running = 0.0
 
@@ -380,7 +408,16 @@ def main():
                 print(f"[EVAL] step {global_step} | samples {samples_seen} | val_loss {val_loss:.4f} | val_ppl {val_ppl:.2f}")
                 if args.wandb:
                     wandb.log({"val/loss": val_loss, "val/ppl": val_ppl})
-
+                    
+                # Show TRM refinement process over all T iterations
+                try:
+                    preview_batch = next(iter(eval_loader))
+                    print(f"Step {global_step}:")
+                    preview_trm_refinement(model, tokenizer, preview_batch, device, k=3, max_chars=120)
+                except StopIteration:
+                    pass
+                    
+                # Save model if it has improved
                 if args.save_best and val_ppl < best_metric:
                     best_metric = val_ppl
                     _save_checkpoint(
