@@ -97,10 +97,13 @@ def _build_model(config: ModelConfig, *, use_trm: bool, n: int, T: int, device: 
         model = BasicGPT(config).to(device)
         print("[MODEL] BasicGPT (causal LM).")
     total_params = sum(p.numel() for p in model.parameters())
-    print(f"[MODEL] Parameters: {total_params/1e6:.2f}M"z)
+    print(f"[MODEL] Parameters: {total_params/1e6:.2f}M")
     return model
 
-def _save_checkpoint(model, config, optimizer, step: int, val_metric: float, out_dir: str, tag: str, run_name: str = None):
+def _save_checkpoint(model, config, optimizer, 
+                     step: int, val_metric: float, 
+                     out_dir: str, tag: str, 
+                     run_name: str = None, samples_seen: int = 0):
     ckpt_dir = Path(out_dir) / (run_name or f"checkpoint-{tag}")
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
@@ -112,6 +115,7 @@ def _save_checkpoint(model, config, optimizer, step: int, val_metric: float, out
             "optimizer_state": optimizer.state_dict() if optimizer is not None else None,
             "step": step,
             "val_metric": val_metric,
+            "samples_seen": samples_seen
         },
         ckpt_dir / "training_state.pt",
     )
@@ -290,6 +294,8 @@ def main():
     if args.wandb:
         import wandb
         wandb.init(project=args.project, name=args.run_name)
+        wandb.define_metric("samples_seen")          # declare custom step axis
+        wandb.define_metric("*", step_metric="samples_seen")  # all metrics use it
         print(f"[W&B] Logging enabled. Run name: {args.run_name or '(auto-generated)'}")
         wandb.watch(model, log="gradients", log_freq=200)
 
@@ -300,92 +306,108 @@ def main():
         return
 
     # Train
-    if args.do_train:
-        optimizer = AdamW(model.parameters(), lr=config.lr, betas=config.betas, weight_decay=config.weight_decay)
-        scaler = GradScaler("cuda", enabled=(device == "cuda" and getattr(config, "amp", True)))
+    optimizer = AdamW(model.parameters(), lr=config.lr, betas=config.betas, weight_decay=config.weight_decay)
+    scaler = GradScaler("cuda", enabled=(device == "cuda" and getattr(config, "amp", True)))
 
-        model.train().to(device)
-        global_step = 0
-        best_metric = float("inf")
-        running = 0.0
+    model.train().to(device)
+    global_step = 0
+    samples_seen = 0  # <-- new counter
+    best_metric = float("inf")
+    running = 0.0
 
-        for epoch in range(args.epochs):
-            print(f"[TRAIN] Epoch {epoch+1}/{args.epochs}")
-            for step, batch in enumerate(train_loader, start=1):
-                x = batch.get("input_ids").to(device)
-                mask = batch.get("attention_mask")
-                labels = batch.get("labels")
-                if mask is not None:
-                    mask = mask.to(device)
-                if labels is not None:
-                    labels = labels.to(device)
+    for epoch in range(args.epochs):
+        print(f"[TRAIN] Epoch {epoch+1}/{args.epochs}")
+        for step, batch in enumerate(train_loader, start=1):
+            x = batch.get("input_ids").to(device)
+            mask = batch.get("attention_mask")
+            labels = batch.get("labels")
+            if mask is not None:
+                mask = mask.to(device)
+            if labels is not None:
+                labels = labels.to(device)
 
-                with autocast("cuda", enabled=(device == "cuda" and config.amp)):
-                    if args.use_trm:
-                        out = model(input_ids=x, labels=labels, n=args.n or config.n, T=args.T or config.T)
-                    else:
-                        out = model(input_ids=x, attention_mask=mask, labels=labels)
-                    loss = _extract_loss(out) / config.grad_accum_steps
-                    
-                # Log inner mechanics
-                rs = getattr(out, "refinement_stats", None)
-                if rs is not None:
-                    T, n = rs["T"], rs["n"]
-                    log = {"train/loss": float(out.loss.item())}
+            batch_size_actual = x.size(0)
+            samples_seen += batch_size_actual
 
-                    # Per-outer magnitudes and ratios
-                    for t in range(T):
-                        log[f"refine/dy_l2/t{t}"]    = rs["dy_l2_per_outer"][t]
-                        log[f"refine/dy_ratio/t{t}"] = rs["dy_ratio_across_T"][t]
+            with autocast("cuda", enabled=(device == "cuda" and config.amp)):
+                if args.use_trm:
+                    out = model(input_ids=x, labels=labels, n=args.n or config.n, T=args.T or config.T)
+                else:
+                    out = model(input_ids=x, attention_mask=mask, labels=labels)
+                loss = _extract_loss(out) / config.grad_accum_steps
 
-                    # Per-inner magnitudes and ratios (nested under each outer step)
-                    for t in range(T):
-                        for i in range(n):
-                            log[f"refine/dz_l2/t{t}/i{i}"]    = rs["dz_l2_per_outer"][t][i]
-                            log[f"refine/dz_ratio/t{t}/i{i}"] = rs["dz_ratio_per_outer"][t][i]
+            # Log refinement stats
+            # rs = getattr(out, "refinement_stats", None)
+            # if rs is not None and args.wandb:
+            #     log = {"train/loss": float(out.loss.item())}
+            #     T, n = rs["T"], rs["n"]
+            #     for t in range(T):
+            #         log[f"refine/dy_l2/t{t}"] = rs["dy_l2_per_outer"][t]
+            #         log[f"refine/dy_ratio/t{t}"] = rs["dy_ratio_across_T"][t]
+            #         for i in range(n):
+            #             log[f"refine/dz_l2/t{t}/i{i}"] = rs["dz_l2_per_outer"][t][i]
+            #             log[f"refine/dz_ratio/t{t}/i{i}"] = rs["dz_ratio_per_outer"][t][i]
+            #     log["refine/dy_l2_sum_over_T"] = sum(rs["dy_l2_per_outer"])
+            #     log["refine/dz_l2_sum_over_all"] = sum(sum(x) for x in rs["dz_l2_per_outer"])
+            #     wandb.log(log, step=samples_seen, commit=True)
 
-                    # Optional quick summaries
-                    log["refine/dy_l2_sum_over_T"] = sum(rs["dy_l2_per_outer"])
-                    log["refine/dz_l2_sum_over_all"] = sum(sum(x) for x in rs["dz_l2_per_outer"])
-                    wandb.log(log, commit=True)
+            scaler.scale(loss).backward()
 
-                scaler.scale(loss).backward()
+            if (step % config.grad_accum_steps) == 0:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
+                scaler.step(optimizer)
+                scaler.update()
+                optimizer.zero_grad(set_to_none=True)
 
-                if (step % config.grad_accum_steps) == 0:
-                    scaler.unscale_(optimizer)
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), config.grad_clip)
-                    scaler.step(optimizer)
-                    scaler.update()
-                    optimizer.zero_grad(set_to_none=True)
+            global_step += 1
+            running += float(loss.item()) * config.grad_accum_steps
 
-                global_step += 1
-                running += float(loss.item()) * config.grad_accum_steps
+            # Logging averaged training loss
+            if global_step % getattr(config, "log_every", 50) == 0:
+                avg_loss = running / getattr(config, "log_every", 50)
+                print(f"[TRAIN] step {global_step} | samples {samples_seen} | loss {avg_loss:.4f}")
+                if args.wandb:
+                    wandb.log({"train/loss_avg": avg_loss, "samples_seen": samples_seen})
+                running = 0.0
 
-                if global_step % getattr(config, "log_every", 50) == 0:
-                    avg_loss = running / getattr(config, "log_every", 50)
-                    print(f"[TRAIN] step {global_step} | loss {avg_loss:.4f}")
-                    if args.wandb:
-                        wandb.log({"train/loss_avg": avg_loss}, step=global_step)
-                    running = 0.0
+            # Evaluation (use samples_seen as axis)
+            if global_step % getattr(config, "eval_every_steps", 500) == 0:
+                val_loss, val_ppl = evaluate(model, eval_loader, device,
+                                                use_trm=args.use_trm,
+                                                n=args.n or config.n,
+                                                T=args.T or config.T)
+                print(f"[EVAL] step {global_step} | samples {samples_seen} | val_loss {val_loss:.4f} | val_ppl {val_ppl:.2f}")
+                if args.wandb:
+                    wandb.log({"val/loss": val_loss, "val/ppl": val_ppl})
 
-                if global_step % getattr(config, "eval_every_steps", 500) == 0:
-                    val_loss, val_ppl = evaluate(model, eval_loader, device, use_trm=args.use_trm, n=args.n or config.n, T=args.T or config.T)
-                    print(f"[EVAL] step {global_step} | val_loss {val_loss:.4f} | val_ppl {val_ppl:.2f}")
-                    if args.wandb:
-                        wandb.log({"val/loss": val_loss, "val/ppl": val_ppl}, step=global_step)
+                if args.save_best and val_ppl < best_metric:
+                    best_metric = val_ppl
+                    _save_checkpoint(
+                        model,
+                        config,
+                        optimizer,
+                        global_step,
+                        best_metric,
+                        config.out_dir,
+                        f"{args.run_name}_[best]",
+                        run_name=args.run_name,
+                        samples_seen=samples_seen
+                    )
 
-                    if args.save_best and val_ppl < best_metric:
-                        best_metric = val_ppl
-                        _save_checkpoint(model, config, optimizer, global_step, best_metric, config.out_dir, f"{args.run_name}_[best]")
+    # Final eval + save
+    val_loss, val_ppl = evaluate(model, eval_loader, device, use_trm=args.use_trm, n=args.n or config.n, T=args.T or config.T)
+    print(f"[FINAL] val_loss {val_loss:.4f} | val_ppl {val_ppl:.2f}")
+    if args.wandb:
+        wandb.log({
+            "final/val_loss": val_loss,
+            "final/val_ppl": val_ppl,
+            "final/epochs": args.epochs,
+            "samples_seen": samples_seen
+        })
+        wandb.finish()
 
-        # Final eval + save
-        val_loss, val_ppl = evaluate(model, eval_loader, device, use_trm=args.use_trm, n=args.n or config.n, T=args.T or config.T)
-        print(f"[FINAL] val_loss {val_loss:.4f} | val_ppl {val_ppl:.2f}")
-        if args.wandb:
-            wandb.log({"final/val_loss": val_loss, "final/val_ppl": val_ppl, "final/epochs": args.epochs}, step=global_step)
-            wandb.finish()
-
-        _save_checkpoint(model, config, optimizer, global_step, val_ppl, config.out_dir, f"e{args.epochs}_step{global_step}", args.run_name)
+    _save_checkpoint(model, config, optimizer, global_step, val_ppl, config.out_dir, f"e{args.epochs}_step{global_step}", args.run_name, samples_seen=samples_seen)
 
 if __name__ == "__main__":
     main()
