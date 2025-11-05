@@ -6,6 +6,7 @@ Key changes:
 - Simple, non-dataclass ModelConfig integration.
 - No reflection or dataclass helpers; one source of truth (ModelConfig.__init__ defaults).
 - Keeps clean CLI path for both BasicGPT and TRM.
+- Logs halting usage metrics to W&B when TRM halting is enabled.
 """
 
 import argparse
@@ -89,10 +90,16 @@ def _enable_flash_sdpa_if_possible():
         print("[WARN] Could not configure SDPA Flash backend:", e)
 
 
-def _build_model(config: ModelConfig, *, use_trm: bool, n: int, T: int, device: str):
+def _build_model(config: ModelConfig, *, use_trm: bool, n: int, T: int, device: str, use_halting: bool = False):
     if use_trm:
-        model = TRMModel(config, n=n, T=T, n_layers=2, use_halting_head=False).to(device)
-        print("[MODEL] TRM (iterative refinement).")
+        model = TRMModel(
+            config,
+            n=n,
+            T=T,
+            n_layers=2,
+            use_halting_head=use_halting
+        ).to(device)
+        print("[MODEL] TRM (iterative refinement). Halting:", use_halting)
     else:
         model = BasicGPT(config).to(device)
         print("[MODEL] BasicGPT (causal LM).")
@@ -194,6 +201,7 @@ def preview_trm_refinement(model, tokenizer, batch, device, *, k=3, max_chars=12
     token_traces = out.__dict__.get("token_traces", None)
     if not token_traces:
         print("[TRM PREVIEW] No token traces available.")
+        model.train()
         return
 
     k = min(k, x.size(0))
@@ -205,6 +213,40 @@ def preview_trm_refinement(model, tokenizer, batch, device, *, k=3, max_chars=12
         print(f"Iteration {t}: {itxt}")
     print("--------")
     model.train()
+
+def _halting_wandb_payload(halting: dict, T: int) -> dict:
+    """
+    Compute summary halting metrics for W&B.
+    halting: {
+      'cum_H': (B,),
+      'halt_step': (B,), 1..executed_T (or 0 if never explicitly halted),
+      'p_t': list of (B,)
+    }
+    """
+    if not halting or "halt_step" not in halting:
+        return {}
+    halt_step = halting["halt_step"]  # (B,)
+    # samples with explicit halting step > 0
+    halted_mask = (halt_step > 0)
+    halted_count = int(halted_mask.sum().item())
+    B = halt_step.numel()
+
+    # unused outer iterations for halted samples
+    unused = torch.clamp(T - halt_step, min=0)
+    unused_halted = torch.where(halted_mask, unused, torch.zeros_like(unused))
+    total_unused = int(unused_halted.sum().item())
+    mean_unused = float(unused_halted.float().mean().item()) if B > 0 else 0.0
+
+    # used fraction: for non-halted treat as 1.0
+    used_frac = torch.where(halted_mask, halt_step.float() / float(T), torch.ones_like(halt_step, dtype=torch.float))
+    used_frac_mean = float(used_frac.mean().item())
+
+    payload = {
+        "halt/unused_outer_total": total_unused,
+        "halt/unused_outer_mean": mean_unused,
+        "halt/used_frac_mean": used_frac_mean,
+    }
+    return payload
 
 
 # ------------------------
@@ -268,9 +310,11 @@ def parse_args():
     parser.add_argument("--wandb", action=BooleanOptionalAction, default=True)
     parser.add_argument("--use_trm", action=BooleanOptionalAction, default=False)
 
+    # NEW: halting toggle (applies only to TRM)
+    parser.add_argument("--use_halting", action=BooleanOptionalAction, default=False,
+                        help="Enable halting head for TRM (adaptive early-stop across outer iterations).")
+
     return parser.parse_args()
-
-
 
 # ------------------------
 # Main
@@ -284,7 +328,14 @@ def main():
 
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
     tokenizer.model_max_length = int(1e12)
-    model = _build_model(config, use_trm=args.use_trm, n=args.n or config.n, T=args.T or config.T, device=device)
+    model = _build_model(
+        config,
+        use_trm=args.use_trm,
+        n=args.n or config.n,
+        T=args.T or config.T,
+        device=device,
+        use_halting=bool(getattr(args, "use_halting", False)),
+    )
 
     if args.load_path:
         _load_checkpoint_into(model, args.load_path, map_location="cpu")
@@ -364,20 +415,20 @@ def main():
                     out = model(input_ids=x, attention_mask=mask, labels=labels)
                 loss = _extract_loss(out) / config.grad_accum_steps
 
-            # Log refinement stats
-            # rs = getattr(out, "refinement_stats", None)
-            # if rs is not None and args.wandb:
-            #     log = {"train/loss": float(out.loss.item())}
-            #     T, n = rs["T"], rs["n"]
-            #     for t in range(T):
-            #         log[f"refine/dy_l2/t{t}"] = rs["dy_l2_per_outer"][t]
-            #         log[f"refine/dy_ratio/t{t}"] = rs["dy_ratio_across_T"][t]
-            #         for i in range(n):
-            #             log[f"refine/dz_l2/t{t}/i{i}"] = rs["dz_l2_per_outer"][t][i]
-            #             log[f"refine/dz_ratio/t{t}/i{i}"] = rs["dz_ratio_per_outer"][t][i]
-            #     log["refine/dy_l2_sum_over_T"] = sum(rs["dy_l2_per_outer"])
-            #     log["refine/dz_l2_sum_over_all"] = sum(sum(x) for x in rs["dz_l2_per_outer"])
-            #     wandb.log(log, step=samples_seen, commit=True)
+            # Halting metrics (if enabled)
+            if args.use_trm and getattr(args, "use_halting", False) and args.wandb:
+                halting = getattr(out, "__dict__", {}).get("halting", None)
+                executed_T = getattr(out, "__dict__", {}).get("executed_T", None)
+                log_payload = _halting_wandb_payload(halting, T=(args.T or config.T))
+                if executed_T is not None:
+                    log_payload["halt/executed_T"] = executed_T
+                if log_payload:
+                    log_payload["samples_seen"] = samples_seen
+                    try:
+                        import wandb
+                        wandb.log(log_payload)
+                    except Exception:
+                        pass
 
             scaler.scale(loss).backward()
 
@@ -396,19 +447,27 @@ def main():
                 avg_loss = running / getattr(config, "log_every", 50)
                 print(f"[TRAIN] step {global_step} | samples {samples_seen} | loss {avg_loss:.4f}")
                 if args.wandb:
-                    wandb.log({"train/loss_avg": avg_loss, "samples_seen": samples_seen})
+                    try:
+                        import wandb
+                        wandb.log({"train/loss_avg": avg_loss, "samples_seen": samples_seen})
+                    except Exception:
+                        pass
                 running = 0.0
 
             # Evaluation (use samples_seen as axis)
             if global_step % getattr(config, "eval_every_steps", 500) == 0:
                 val_loss, val_ppl = evaluate(model, eval_loader, device,
-                                                use_trm=args.use_trm,
-                                                n=args.n or config.n,
-                                                T=args.T or config.T)
+                                             use_trm=args.use_trm,
+                                             n=args.n or config.n,
+                                             T=args.T or config.T)
                 print(f"[EVAL] step {global_step} | samples {samples_seen} | val_loss {val_loss:.4f} | val_ppl {val_ppl:.2f}")
                 if args.wandb:
-                    wandb.log({"val/loss": val_loss, "val/ppl": val_ppl})
-                    
+                    try:
+                        import wandb
+                        wandb.log({"val/loss": val_loss, "val/ppl": val_ppl, "samples_seen": samples_seen})
+                    except Exception:
+                        pass
+
                 # Show TRM refinement process over all T iterations
                 try:
                     preview_batch = next(iter(eval_loader))
@@ -416,7 +475,7 @@ def main():
                     preview_trm_refinement(model, tokenizer, preview_batch, device, k=3, max_chars=120)
                 except StopIteration:
                     pass
-                    
+
                 # Save model if it has improved
                 if args.save_best and val_ppl < best_metric:
                     best_metric = val_ppl
@@ -436,13 +495,17 @@ def main():
     val_loss, val_ppl = evaluate(model, eval_loader, device, use_trm=args.use_trm, n=args.n or config.n, T=args.T or config.T)
     print(f"[FINAL] val_loss {val_loss:.4f} | val_ppl {val_ppl:.2f}")
     if args.wandb:
-        wandb.log({
-            "final/val_loss": val_loss,
-            "final/val_ppl": val_ppl,
-            "final/epochs": args.epochs,
-            "samples_seen": samples_seen
-        })
-        wandb.finish()
+        try:
+            import wandb
+            wandb.log({
+                "final/val_loss": val_loss,
+                "final/val_ppl": val_ppl,
+                "final/epochs": args.epochs,
+                "samples_seen": samples_seen
+            })
+            wandb.finish()
+        except Exception:
+            pass
 
     _save_checkpoint(model, config, optimizer, global_step, val_ppl, config.out_dir, f"e{args.epochs}_step{global_step}", args.run_name, samples_seen=samples_seen)
 

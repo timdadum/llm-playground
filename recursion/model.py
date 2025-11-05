@@ -421,15 +421,13 @@ class TRMModel(PreTrainedModel):
     def set_output_embeddings(self, new_out): self.lm_head = new_out
     def tie_weights(self): self.lm_head.weight = self.token_emb.weight
 
-    def forward(
+    # ---------- New modular helpers for TRM ----------
+    def _init_states(
         self,
         input_ids: torch.LongTensor,
-        labels: Optional[torch.LongTensor] = None,
-        nextk_grid_labels: Optional[torch.Tensor] = None,
-        answer_init_ids: Optional[torch.LongTensor] = None,
-        return_token_traces: bool = False,
-        **kwargs,
-    ):
+        labels: Optional[torch.LongTensor],
+        nextk_grid_labels: Optional[torch.Tensor],
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, Optional[torch.Tensor], Optional[torch.Tensor]]:
         device = input_ids.device
         B, L_total = input_ids.shape
 
@@ -442,85 +440,200 @@ class TRMModel(PreTrainedModel):
             if nextk_grid_labels is not None:
                 nextk_grid_labels = nextk_grid_labels[:, -L:, :]
 
-        x = self._embed(input_ids)  # (B, L, D)
+        x = self._embed(input_ids)                  # (B, L, D)
+        z = torch.zeros_like(x, device=device)      # latent
+        y = torch.zeros_like(x, device=device)      # answer latent
+        return x, y, z, labels, nextk_grid_labels
 
-        # initial states
-        z = torch.zeros_like(x, device=device)
-        if answer_init_ids is not None and answer_init_ids.size(1) != L:
-            answer_init_ids = answer_init_ids[:, -L:]
-        y = self._embed(answer_init_ids) if answer_init_ids is not None else torch.zeros_like(x, device=device)
+    def _apply_running_mask(self, tensor: torch.Tensor, running_mask: Optional[torch.Tensor]) -> torch.Tensor:
+        if running_mask is None:
+            return tensor
+        return tensor * running_mask  # (B,1,1) broadcast over (B,L,D)
+
+    def _run_inner_loop(
+        self,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        z: torch.Tensor,
+        running_mask: Optional[torch.Tensor],
+    ) -> tuple[torch.Tensor, list[float]]:
+        inner_mags: list[float] = []
+        for _ in range(self.n):
+            dz = self.net(x, y, z)
+            dz = self._apply_running_mask(dz, running_mask)
+            z = z + dz
+            inner_mags.append(self._l2_mean(dz))
+        return z, inner_mags
+
+    def _outer_step(
+        self,
+        y: torch.Tensor,
+        z: torch.Tensor,
+        running_mask: Optional[torch.Tensor],
+    ) -> tuple[torch.Tensor, float]:
+        dy = self.net(y, z)
+        dy = self._apply_running_mask(dy, running_mask)
+        y = y + dy
+        return y, self._l2_mean(dy)
+
+    def _readout_logits(self, y: torch.Tensor) -> torch.Tensor:
+        return self._reverse_embed(y)  # (B, L, V)
+
+    def _compute_step_loss(
+        self,
+        logits_t: torch.Tensor,
+        labels: Optional[torch.LongTensor],
+        nextk_grid_labels: Optional[torch.Tensor],
+    ) -> Optional[torch.Tensor]:
+        if nextk_grid_labels is not None:
+            return self._k_ce(logits_t, nextk_grid_labels, self.K)
+
+        if labels is not None:
+            shift_logits = logits_t[:, :-1, :]
+            shift_labels = labels[:, 1:]
+            V = shift_logits.size(-1)
+            return F.cross_entropy(
+                shift_logits.reshape(-1, V).float(),
+                shift_labels.reshape(-1).long(),
+                ignore_index=-100
+            )
+        return None
+
+    def _init_halting(self, B: int, device: torch.device):
+        use_halt = getattr(self, "use_halting", False) and hasattr(self, "halt_head")
+        if not use_halt:
+            return False, None, None, None, None
+        eps = 1e-3
+        H = torch.zeros(B, device=device)                   # cumulative halting mass
+        halt_step = torch.zeros(B, dtype=torch.long, device=device)  # 1..T, 0 if none
+        halt_probs: list[torch.Tensor] = []
+        return True, eps, H, halt_step, halt_probs
+
+    def _update_halting(
+        self,
+        y: torch.Tensor,
+        H: torch.Tensor,
+        halt_step: torch.Tensor,
+        halt_probs: list[torch.Tensor],
+        t: int,
+        eps: float,
+    ) -> tuple[torch.Tensor, torch.Tensor, list[torch.Tensor], torch.Tensor, bool]:
+        # produce per-sample halting probability p_t from pooled y
+        pooled = y.mean(dim=1)                              # (B, D)
+        p_t = torch.sigmoid(self.halt_head(pooled)).squeeze(-1)  # (B,)
+        halt_probs.append(p_t.detach())
+
+        still = (H < 1.0 - eps)
+        incr = torch.where(still, p_t, torch.zeros_like(p_t))
+        new_H = (H + incr).clamp(max=1.0)
+
+        newly_halted = (H < 1.0 - eps) & (new_H >= 1.0 - eps) & (halt_step == 0)
+        halt_step = torch.where(newly_halted, torch.as_tensor(t + 1, device=y.device).long(), halt_step)
+
+        H = new_H
+        all_halted = bool(torch.all(H >= 1.0 - eps))
+        return H, halt_step, halt_probs, p_t, all_halted
+
+    # -------------------- forward --------------------
+    def forward(
+        self,
+        input_ids: torch.LongTensor,
+        labels: Optional[torch.LongTensor] = None,
+        nextk_grid_labels: Optional[torch.Tensor] = None,
+        answer_init_ids: Optional[torch.LongTensor] = None,
+        return_token_traces: bool = False,
+        **kwargs,
+    ):
+        device = input_ids.device
+        B, _ = input_ids.shape
+
+        # ---- init states (x, y, z) and labels ----
+        x, y, z, labels, nextk_grid_labels = self._init_states(input_ids, labels, nextk_grid_labels)
+
+        # optional warm-start y from provided answer_init_ids
+        if answer_init_ids is not None:
+            if answer_init_ids.size(1) != x.size(1):
+                answer_init_ids = answer_init_ids[:, -x.size(1):]
+            y = self._embed(answer_init_ids)
 
         total_loss = 0.0 if self.training else None
         loss_steps = 0
         all_logits: list[torch.Tensor] = []
 
-        # --- refinement tracking ---
+        # tracking
         dz_l2_per_outer: list[list[float]] = []
         dy_l2_per_outer: list[float] = []
-        token_traces: list[torch.Tensor] = []  # each is (B, L) LongTensor
+        token_traces: list[torch.Tensor] = []
 
-        for _ in range(self.T):
-            inner_mags: list[float] = []
+        # ---- halting state ----
+        use_halt, eps, H, halt_step, halt_probs = self._init_halting(B, device)
 
-            # inner loop: refine z (n steps)
-            for _ in range(self.n):
-                dz = self.net(x, y, z)
-                z = z + dz
-                inner_mags.append(self._l2_mean(dz))
+        executed_T = 0  # how many outer iterations actually executed
 
+        for t in range(self.T):
+            executed_T = t + 1
+
+            running_mask = None
+            if use_halt:
+                running_mask = (H < 1.0 - eps).float().view(B, 1, 1)  # (B,1,1)
+
+            # inner: refine z, masked for halted samples
+            z, inner_mags = self._run_inner_loop(x, y, z, running_mask)
             dz_l2_per_outer.append(inner_mags)
 
-            # outer step: refine y (1 step)
-            dy = self.net(y, z)
-            y = y + dy
-            dy_l2_per_outer.append(self._l2_mean(dy))
+            # outer: refine y, masked for halted samples
+            y, dy_mag = self._outer_step(y, z, running_mask)
+            dy_l2_per_outer.append(dy_mag)
 
-            # readout & loss
-            logits_t = self._reverse_embed(y)  # (B, L, V)
+            # readout + (optional) tokens
+            logits_t = self._readout_logits(y)
             all_logits.append(logits_t)
 
             if return_token_traces:
-                tokens_t = logits_t.argmax(dim=-1)  # (B, L)
-                token_traces.append(tokens_t.detach())
+                token_traces.append(logits_t.argmax(dim=-1).detach())
 
-            if nextk_grid_labels is not None:
-                step_loss = self._k_ce(logits_t, nextk_grid_labels, self.K)
-            elif labels is not None:
-                shift_logits = logits_t[:, :-1, :]
-                shift_labels = labels[:, 1:]
-                V = shift_logits.size(-1)
-                step_loss = F.cross_entropy(
-                    shift_logits.reshape(-1, V).float(),
-                    shift_labels.reshape(-1).long(),
-                    ignore_index=-100
-                )
-            else:
-                step_loss = None
-
+            # deep supervision: per-outer step loss
+            step_loss = self._compute_step_loss(logits_t, labels, nextk_grid_labels)
             if step_loss is not None:
                 total_loss = step_loss if total_loss is None else (total_loss + step_loss)
                 loss_steps += 1
+
+            # halting update (after producing current y/logits)
+            if use_halt:
+                H, halt_step, halt_probs, p_t, all_halted = self._update_halting(y, H, halt_step, halt_probs, t, eps)
+                if all_halted:
+                    # ensure any still-zero halt_step are filled with current step (1-based)
+                    halt_step = torch.where(halt_step == 0, torch.as_tensor(t + 1, device=device).long(), halt_step)
+                    break
 
         if loss_steps > 0:
             total_loss = total_loss / loss_steps
 
         final_logits = all_logits[-1]
 
-        # ratios
+        # ratios for diagnostics
         dz_ratio_per_outer, dy_ratio_across_T = self._compute_ratios(dz_l2_per_outer, dy_l2_per_outer)
 
         out = CausalLMOutput(loss=total_loss, logits=final_logits)
         out.__dict__.update({
             "refinement_stats": {
-                "dz_l2_per_outer": dz_l2_per_outer,           # [T][n]
-                "dy_l2_per_outer": dy_l2_per_outer,           # [T]
-                "dz_ratio_per_outer": dz_ratio_per_outer,     # [T][n], sums to 1 per t
-                "dy_ratio_across_T": dy_ratio_across_T,       # [T], sums to 1 across t
+                "dz_l2_per_outer": dz_l2_per_outer,
+                "dy_l2_per_outer": dy_l2_per_outer,
+                "dz_ratio_per_outer": dz_ratio_per_outer,
+                "dy_ratio_across_T": dy_ratio_across_T,
                 "n": self.n,
                 "T": self.T,
-            }
+            },
+            "executed_T": executed_T,  # how many outer iterations actually ran
         })
         if return_token_traces:
-            out.__dict__["token_traces"] = token_traces  # list length T of (B, L)
+            out.__dict__["token_traces"] = token_traces
+
+        if use_halt:
+            out.__dict__["halting"] = {
+                "cum_H": H.detach(),                 # (B,)
+                "halt_step": halt_step.detach(),     # (B,) 1..executed_T
+                "p_t": [p.detach() for p in halt_probs],  # list of (B,)
+            }
 
         return out
