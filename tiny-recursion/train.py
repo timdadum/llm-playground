@@ -15,6 +15,7 @@ import math
 import os
 import time
 from pathlib import Path
+from datasets import load_dataset
 
 import torch
 import torch.nn.functional as F
@@ -24,8 +25,8 @@ from transformers import AutoTokenizer
 
 # local
 from create_shards import split_and_shard, load_split
-from create_dataloaders import build_packed_dataloaders
-from model import BasicGPT, ModelConfig, TRMModel
+from create_dataloaders import build_packed_dataloaders, build_packed_dataloaders_with_tokenizer, build_tokenizer_from_mode
+from model import BasicGPT, ModelConfig, TRMModel, SequentialTRMModel, RecursiveModel
 
 
 # ------------------------
@@ -90,16 +91,17 @@ def _enable_flash_sdpa_if_possible():
         print("[WARN] Could not configure SDPA Flash backend:", e)
 
 
-def _build_model(config: ModelConfig, *, use_trm: bool, n: int, T: int, device: str, use_halting: bool = False):
+def _build_model(config: ModelConfig, *, use_trm: bool, n: int, T: int, device: str, use_halting: bool = False, next_k: int = 0, model_kind: str = 'auto', recursion_steps: int = 2, next_k=getattr(args, 'next_k', 0), model_kind=getattr(args, 'model_kind', 'auto'), recursion_steps=getattr(args, 'recursion_steps', 2)):
     if use_trm:
-        model = TRMModel(
-            config,
-            n=n,
-            T=T,
-            n_layers=2,
-            use_halting_head=use_halting
-        ).to(device)
-        print("[MODEL] TRM (iterative refinement). Halting:", use_halting)
+        if model_kind == 'recursive':
+            model = RecursiveModel(config, recursion_steps=recursion_steps).to(device)
+            print(f"[MODEL] RecursiveModel, steps={recursion_steps}.")
+        elif next_k and next_k > 0:
+            model = SequentialTRMModel(config, n=n, T=T, n_layers=2, use_halting_head=use_halting).to(device)
+            print("[MODEL] SequentialTRMModel (next-K). Halting:", use_halting)
+        else:
+            model = TRMModel(config).to(device)
+            print("[MODEL] TRMModel (single-token).")
     else:
         model = BasicGPT(config).to(device)
         print("[MODEL] BasicGPT (causal LM).")
@@ -334,7 +336,7 @@ def main():
         n=args.n or config.n,
         T=args.T or config.T,
         device=device,
-        use_halting=bool(getattr(args, "use_halting", False)),
+        use_halting=bool(getattr(args, "use_halting", False, next_k=getattr(args, 'next_k', 0), model_kind=getattr(args, 'model_kind', 'auto'), recursion_steps=getattr(args, 'recursion_steps', 2))),
     )
 
     if args.load_path:
@@ -357,7 +359,30 @@ def main():
         compress=False
     )
 
+    
+# Set seeds early
+set_global_seed(args.seed)
+
+# Dataset & tokenizer
+if args.dataset.lower() in ('tinystories','tiny','ts'):
+    hf_train = load_dataset('roneneldan/TinyStories', split='train')
+    hf_val = load_dataset('roneneldan/TinyStories', split='validation')
+    hf_test = hf_val
+    # Build tokenizer quickly
+    tokenizer = build_tokenizer_from_mode(args.tokenizer_mode, hf_ds={'train': hf_train, 'validation': hf_val}, cache_dir=str(Path(args.out_dir)/'tok_cache'))
+    train_loader, eval_loader, test_loader = build_packed_dataloaders_with_tokenizer(
+        hf_train, hf_val, hf_test, tokenizer, seq_len=config.context_length, batch_size=args.batch_size, num_workers=args.num_workers, nextk_K=args.next_k if hasattr(args, 'next_k') else 0
+    )
+else:
+    # Fallback to shards on disk using existing path
     train_hfds = load_split(config.data_out_dir, "train", shuffle_seed=42)
+    eval_hfds = load_split(config.data_out_dir, "val", shuffle_seed=43)
+    test_hfds = load_split(config.data_out_dir, "test", shuffle_seed=44)
+    tokenizer = build_tokenizer_from_mode(args.tokenizer_mode, hf_ds={'train': train_hfds, 'validation': eval_hfds}, cache_dir=str(Path(args.out_dir)/'tok_cache'))
+    train_loader, eval_loader, test_loader = build_packed_dataloaders_with_tokenizer(
+        train_hfds, eval_hfds, test_hfds, tokenizer, seq_len=config.context_length, batch_size=args.batch_size, num_workers=args.num_workers, nextk_K=args.next_k if hasattr(args, 'next_k') else 0
+    )
+
     eval_hfds = load_split(config.data_out_dir, "val", shuffle_seed=43)
     test_hfds = load_split(config.data_out_dir, "test", shuffle_seed=44)
 

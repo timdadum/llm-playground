@@ -306,7 +306,7 @@ class TRMTinyNet(nn.Module):
             h = blk(h)
         return h
 
-class TRMModel(PreTrainedModel):
+class SequentialTRMModel(PreTrainedModel):
     config_class = ModelConfig
     _supports_sdpa = True
 
@@ -637,3 +637,91 @@ class TRMModel(PreTrainedModel):
             }
 
         return out
+
+
+class TRMModel(PreTrainedModel):
+    """TRM variant that predicts only the next single token (classic LM)"""
+    config_class = ModelConfig
+    _supports_sdpa = True
+
+    def __init__(self, config: ModelConfig):
+        super().__init__(config)
+        self.cfg = config
+        self.config.use_cache = False
+        self.config.tie_word_embeddings = getattr(config, "tie_word_embeddings", True)
+
+        # Token & position embeddings
+        self.token_emb = nn.Embedding(config.vocab_size, config.d_model)
+        self.pos_emb = nn.Embedding(config.max_seq_len, config.d_model)
+
+        # Share a compact stack of transformer blocks
+        self.blocks = nn.ModuleList([
+            Block(config) for _ in range(config.n_layers)
+        ])
+        self.norm_f = nn.LayerNorm(config.d_model)
+        self.lm_head = nn.Linear(config.d_model, config.vocab_size, bias=False)
+        if self.config.tie_word_embeddings:
+            self.lm_head.weight = self.token_emb.weight
+
+    def forward(self, input_ids: torch.LongTensor, labels: torch.LongTensor | None = None, **kwargs):
+        B, T = input_ids.shape
+        pos = torch.arange(0, T, device=input_ids.device, dtype=torch.long).unsqueeze(0)
+
+        h = self.token_emb(input_ids) + self.pos_emb(pos)
+        attn_mask = kwargs.get("attention_mask", None)
+
+        for blk in self.blocks:
+            h = blk(h, attn_mask)
+
+        h = self.norm_f(h)
+        logits = self.lm_head(h)  # (B, T, V)
+
+        if labels is not None:
+            shift_logits = logits[:, :-1, :].contiguous()
+            shift_labels = labels[:, 1:].contiguous()
+            loss = F.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+            return {"logits": logits, "loss": loss}
+        return {"logits": logits}
+
+
+class RecursiveModel(PreTrainedModel):
+    """Reuses the same transformer blocks recursively for N passes (parameter tying)."""
+    config_class = ModelConfig
+
+    def __init__(self, config: ModelConfig, recursion_steps: int | None = None):
+        super().__init__(config)
+        self.cfg = config
+        self.recursion_steps = recursion_steps or getattr(config, "recursion_steps", 2)
+
+        self.token_emb = nn.Embedding(config.vocab_size, config.d_model)
+        self.pos_emb = nn.Embedding(config.max_seq_len, config.d_model)
+
+        # Single shared stack used repeatedly
+        self.blocks = nn.ModuleList([Block(config) for _ in range(config.n_layers)])
+        self.norm_f = nn.LayerNorm(config.d_model)
+        self.lm_head = nn.Linear(config.d_model, config.vocab_size, bias=False)
+
+        if getattr(config, "tie_word_embeddings", True):
+            self.lm_head.weight = self.token_emb.weight
+
+    def forward(self, input_ids: torch.LongTensor, labels: torch.LongTensor | None = None, **kwargs):
+        B, T = input_ids.shape
+        pos = torch.arange(0, T, device=input_ids.device, dtype=torch.long).unsqueeze(0)
+
+        h = self.token_emb(input_ids) + self.pos_emb(pos)
+        attn_mask = kwargs.get("attention_mask", None)
+
+        # Run the same parameters multiple times
+        for _ in range(self.recursion_steps):
+            for blk in self.blocks:
+                h = blk(h, attn_mask)
+
+        h = self.norm_f(h)
+        logits = self.lm_head(h)
+
+        if labels is not None:
+            shift_logits = logits[:, :-1, :].contiguous()
+            shift_labels = labels[:, 1:].contiguous()
+            loss = F.cross_entropy(shift_logits.view(-1, shift_logits.size(-1)), shift_labels.view(-1))
+            return {"logits": logits, "loss": loss}
+        return {"logits": logits}

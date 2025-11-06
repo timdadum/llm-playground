@@ -17,6 +17,90 @@ from transformers import AutoTokenizer
 from datasets import Dataset
 from typing import Optional
 
+
+
+# -----------------------------
+# Tokenizer helpers
+# -----------------------------
+from tokenizers import Tokenizer, models, trainers, pre_tokenizers, processors
+from transformers import PreTrainedTokenizerFast
+
+def build_tokenizer_from_mode(mode: str, hf_ds=None, cache_dir: str = ".tok_cache", vocab_size: int = 4000, eos_token: str = "<|eos|>"):
+    """Return a tokenizer based on mode: 'char' or 'tiny' (BPE trained quickly).
+    If mode=='tiny', trains a small BPE on available dataset texts (fast).
+    Results are cached to cache_dir.
+    """
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_file = cache_dir / f"{mode}_vs{vocab_size}.json"
+
+    if cache_file.exists():
+        tok = PreTrainedTokenizerFast(tokenizer_file=str(cache_file))
+        tok.add_special_tokens({"eos_token": eos_token})
+        return tok
+
+    if mode.lower() == "char":
+        # Build a simple character-level tokenizer
+        charset = set()
+        if hf_ds is not None:
+            src_iter = hf_ds["train"]["text"] if isinstance(hf_ds, dict) else hf_ds["text"]
+        else:
+            src_iter = []
+        for txt in list(src_iter)[:50000]:
+            charset.update(list(txt))
+        # Ensure some basics
+        for s in ["\n", " ", ".", ",", "!", "?", "'", '"']:
+            charset.add(s)
+        # Create vocab
+        chars = sorted(charset)
+        vocab = {ch: i+4 for i, ch in enumerate(chars)}  # reserve 0..3 for specials
+        # Build a PreTrainedTokenizerFast from a Tokenizer model
+        model = models.WordLevel(vocab=vocab, unk_token="<|unk|>")
+        tok = Tokenizer(model)
+        tok.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+        # Post-processor to append EOS
+        tok.post_processor = processors.TemplateProcessing(
+            single=f"$A {eos_token}",
+            pair=f"$A {eos_token} $B:1 {eos_token}:1",
+            special_tokens=[(eos_token, 1)],
+        )
+        fast = PreTrainedTokenizerFast(tokenizer_object=tok, unk_token="<|unk|>", eos_token=eos_token)
+        fast.save_pretrained(str(cache_dir), legacy_format=False)
+        (cache_dir / "tokenizer.json").rename(cache_file)
+        return PreTrainedTokenizerFast(tokenizer_file=str(cache_file))
+
+    # Tiny BPE
+    wordpiece = Tokenizer(models.BPE(unk_token="<|unk|>"))
+    wordpiece.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=True)
+    trainer = trainers.BpeTrainer(vocab_size=vocab_size, min_frequency=2, special_tokens=["<|unk|>", eos_token])
+    # Gather a small corpus
+    def iter_texts():
+        if hf_ds is None:
+            return []
+        if isinstance(hf_ds, dict):
+            for split in ("train", "validation", "val", "test"):
+                if split in hf_ds:
+                    for t in hf_ds[split]["text"]:
+                        yield t
+        else:
+            for t in hf_ds["text"]:
+                yield t
+    corpus = list(iter_texts())[:200000]  # cap
+    wordpiece.train_from_iterator(corpus, trainer=trainer)
+    fast = PreTrainedTokenizerFast(tokenizer_object=wordpiece, unk_token="<|unk|>", eos_token=eos_token)
+    fast.save_pretrained(str(cache_dir), legacy_format=False)
+    (cache_dir / "tokenizer.json").rename(cache_file)
+    return PreTrainedTokenizerFast(tokenizer_file=str(cache_file))
+
+def build_packed_dataloaders_with_tokenizer(train_hfds, val_hfds, test_hfds, tokenizer, seq_len: int, batch_size: int, num_workers: int = 2, nextk_K: int = 0):
+    eos_id = tokenizer.eos_token_id
+    collate_fn = make_collate_tokens(nextk_K=nextk_K, eos_id=eos_id)
+
+    def make_loader(ds):
+        packed = PackedDataset(ds, tokenizer, seq_len, eos_id=eos_id, lookahead_k=nextk_K)
+        return DataLoader(packed, batch_size=batch_size, num_workers=num_workers, collate_fn=collate_fn)
+
+    return make_loader(train_hfds), make_loader(val_hfds), make_loader(test_hfds)
 class PackedDataset(IterableDataset):
     """
     Concatenate all documents with EOS separators. Non-overlapping windows of L_in with K-step lookahead.
